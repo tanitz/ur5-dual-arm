@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Draw the cell in RViz from config/cell.yaml. Read-only.
+set -e
+root="$(dirname "$(readlink -f "$0")")/.."
+source /opt/ros/humble/setup.bash
+source "$root/ros2_ws/install/setup.bash"
+exec ros2 launch "$root/ur5dual/ros/view_cell.launch.py" "$@"

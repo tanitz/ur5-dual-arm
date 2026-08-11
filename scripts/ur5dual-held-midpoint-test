@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+"""Commission the new midpoint HeldObject loop without directional motion."""
+
+import argparse
+import os
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+
+from ur5dual.cell import Cell
+from ur5dual.config import CellConfig
+from ur5dual.tools.midpoint_hold import MidpointHoldLoop, MidpointObject
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Capture a midpoint object and optionally servo-hold it")
+    parser.add_argument("--live", action="store_true",
+                        help="start both servo backends and hold current pose")
+    parser.add_argument("--confirm", default="",
+                        help="must be exactly HOLD for --live")
+    parser.add_argument("--seconds", type=float, default=3.0)
+    args = parser.parse_args()
+
+    if args.live and args.confirm != "HOLD":
+        parser.error("--live requires --confirm HOLD and an E-stop within reach")
+
+    cell = Cell(CellConfig.load())
+    cell.listeners.append(lambda message: print("  .", message))
+    try:
+        results = cell.connect(("A", "B"))
+        print("connected:", results)
+        if len(cell.connected_ids) != 2:
+            raise SystemExit("both arms must be connected")
+        print("state: A %s/%s, B %s/%s" % (
+            cell.arms["A"].robot_mode(), cell.arms["A"].safety_mode(),
+            cell.arms["B"].robot_mode(), cell.arms["B"].safety_mode()))
+
+        obj = MidpointObject().capture(cell)
+        print("virtual midpoint XYZ (mm):", obj.pose_world[:3] * 1000.0)
+        print("grip span (mm):", __import__("numpy").linalg.norm(
+            obj.grasps["A"][:3, 3] - obj.grasps["B"][:3, 3]) * 1000.0)
+        errors = obj.reconstruction_errors(cell)
+        print("target reconstruction error:", errors)
+
+        if not args.live:
+            print("PREFLIGHT ONLY: no command was sent")
+            print("live hold: scripts/ur5dual-held-midpoint-test "
+                  "--live --confirm HOLD --seconds 3")
+            return
+
+        print("LIVE SERVO HOLD: the object will not be translated or rotated")
+        result = MidpointHoldLoop(cell, obj).run(args.seconds)
+        print("PASS: %d synchronized samples" % result.samples)
+        print("maximum TCP motion (mm):", {
+            a: round(v * 1000.0, 3) for a, v in result.max_tcp_motion.items()
+        })
+    finally:
+        cell.disconnect()
+
+
+if __name__ == "__main__":
+    main()
+

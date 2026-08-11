@@ -1,0 +1,21 @@
+{
+  "name": "six_axis_dry_check",
+  "loop": false,
+  "steps": [
+    {"kind": "ATTACH", "enabled": true, "object": "box", "origin": "midpoint"},
+
+    {"kind": "ROTATE_OBJ", "enabled": true, "axis": "z", "frame": "world", "angle_deg": 20.0},
+    {"kind": "ROTATE_OBJ", "enabled": true, "axis": "z", "frame": "world", "angle_deg": -20.0},
+
+    {"kind": "ROTATE_OBJ", "enabled": true, "axis": "x", "frame": "world", "angle_deg": 15.0},
+    {"kind": "ROTATE_OBJ", "enabled": true, "axis": "x", "frame": "world", "angle_deg": -15.0},
+
+    {"kind": "ROTATE_OBJ", "enabled": true, "axis": "y", "frame": "world", "angle_deg": 15.0},
+    {"kind": "ROTATE_OBJ", "enabled": true, "axis": "y", "frame": "world", "angle_deg": -15.0},
+
+    {"kind": "ROTATE_OBJ", "enabled": true, "axis": "z", "frame": "object", "angle_deg": 30.0},
+    {"kind": "ROTATE_OBJ", "enabled": true, "axis": "z", "frame": "object", "angle_deg": -30.0},
+
+    {"kind": "DETACH", "enabled": true}
+  ]
+}

@@ -1,0 +1,48 @@
+# Dual-UR5 cell configuration.
+#
+# arms.<id>.base is the transform from the cell's `world` frame to that arm's
+# base, in metres and fixed-axis roll-pitch-yaw — the same convention a URDF
+# <origin> tag uses. Calibration tools can overwrite arm B's transform with
+# the measured value.
+#
+# mount.style = pedestal derives those base transforms from four measurable
+# numbers instead (column height, shoulder spacing, outward tilt, pair yaw).
+# Any edit to arms.<id>.base by hand or by the wizard switches it to custom.
+#
+# motion.backend picks how the 125 Hz coordinated loop talks to the robots:
+#   rtde      ur_rtde servoL/servoJ  (default)
+#   urscript  a streaming URScript program uploaded to each controller
+#
+# motion.control picks what goes over that link once per cycle:
+#   joint   six joint angles, solved here by closed_chain.py from one box pose
+#           — the same path SIM runs, so what the drawing does is what the
+#           arms do. Verified against both controllers when the loop starts.
+#   pose    a Cartesian target per arm, each controller solving its own IK.
+#           Set this back if the joint path refuses to start.
+cell: {name: dual_ur5, world_frame: world}
+arms:
+  A:
+    label: Arm A
+    ip: 192.168.250.20
+    enabled: true
+    ur_type: ur5
+    base:
+      xyz: [0.0, 0.25, 1.2]
+      rpy: [-2.0943951, -0.0, 0.0]
+  B:
+    label: Arm B
+    ip: 192.168.250.30
+    enabled: true
+    ur_type: ur5
+    base:
+      xyz: [0.0, -0.25, 1.2]
+      rpy: [2.0943951, -0.0, 0.0]
+mount: {style: pedestal, column_height: 1.2, spacing: 0.5, tilt_deg: 135.0, tilt_deg_A: null,
+  tilt_deg_B: null, rotate_deg_A: 0.0, rotate_deg_B: 0.0, yaw_deg: 0.0, column_radius: 0.06,
+  crossbar_radius: 0.05, pad_radius: 0.075, pad_thickness: 0.022, enforce_outward_guard: true}
+motion: {backend: urscript, control: joint, allow_uncalibrated_real: true, servo_rate_hz: 125.0, servo_lookahead: 0.1, servo_gain: 300.0,
+  servo_accel: 1.2, servo_speed: 0.5, max_force_rise: 100.0, max_tcp_force: 400.0,
+  max_pair_drift: 0.004}
+calibrated: false
+translation_calibrated: false
+limits: {jog_lin_max: 0.25, jog_ang_max: 1.0, object_lin_speed: 0.05, object_ang_speed: 0.3}

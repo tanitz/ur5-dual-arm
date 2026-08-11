@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Dual UR5 control panel.
+
+# This box was renamed to `robot` while /etc/hosts and the running X session
+# still say `ubuntu`, so Qt's session-manager handshake tries to reach a host
+# libICE then refuses as non-local and prints three lines of alarming-looking
+# nothing at every launch. Session management only decides whether the desktop
+# can ask the app to save state at logout, which a panel that lives on one
+# screen has no use for. Dropping the variable declines it cleanly instead.
+unset SESSION_MANAGER
+
+cd "$(dirname "$(readlink -f "$0")")/.." && exec python3 -m ur5dual.gui.app "$@"

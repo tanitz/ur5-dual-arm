@@ -1,0 +1,196 @@
+<?xml version="1.0"?>
+<!--
+  Two UR5s in one description, placed from cell.yaml.
+
+  ur_description's own ur_robot macro is instantiated twice with different
+  tf_prefixes, each hung off `world` at the transform the config gives. That
+  is the whole trick: the arms are stock, only their mounting differs, so
+  there is nothing here to keep in sync with upstream.
+
+  The frame is drawn as round tube, and each end carries a mounting pad
+  rotated by the *same* rpy the arm base uses. The pad is not decoration: a
+  base floating clear of the structure is what a wrong tilt looks like, so
+  drawing the face the arm is supposed to be bolted to turns a geometry error
+  into something visible.
+
+  ros2_control tags are switched off — this description exists to be looked
+  at, not to be driven. The robots are driven over their own sockets.
+
+  Every number arrives as a launch argument; ur5dual/ros/launch_support.py
+  fills them from the config so the two never disagree.
+
+  The robot name is literal rather than an argument on purpose: xacro
+  evaluates the root element's attributes before it reads the <xacro:arg>
+  declarations below it, so an arg used up here has no default and every
+  caller would have to pass name:= or get "Undefined substitution argument".
+-->
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="dual_ur5">
+
+  <xacro:arg name="ur_type" default="ur5"/>
+
+  <xacro:arg name="a_xyz" default="0 0.25 1.2"/>
+  <xacro:arg name="a_rpy" default="-2.0943951 0 0"/>
+  <xacro:arg name="b_xyz" default="0 -0.25 1.2"/>
+  <xacro:arg name="b_rpy" default="2.0943951 0 0"/>
+
+  <!-- the tube frame, drawn so the view matches the real cell -->
+  <xacro:arg name="show_frame" default="true"/>
+  <xacro:arg name="column_height" default="1.2"/>
+  <xacro:arg name="column_radius" default="0.06"/>
+  <xacro:arg name="crossbar_radius" default="0.05"/>
+  <xacro:arg name="spacing" default="0.5"/>
+  <xacro:arg name="pad_radius" default="0.075"/>
+  <xacro:arg name="pad_thickness" default="0.022"/>
+  <xacro:arg name="yaw_rad" default="0"/>
+
+  <xacro:include filename="$(find ur_description)/urdf/ur_macro.xacro"/>
+
+  <xacro:property name="ur_type" value="$(arg ur_type)"/>
+  <xacro:property name="cfg" value="$(find ur_description)/config/${ur_type}"/>
+  <xacro:property name="col_h" value="$(arg column_height)"/>
+  <xacro:property name="col_r" value="$(arg column_radius)"/>
+  <xacro:property name="bar_r" value="$(arg crossbar_radius)"/>
+  <xacro:property name="bar_len" value="$(arg spacing)"/>
+  <xacro:property name="pad_r" value="$(arg pad_radius)"/>
+  <xacro:property name="pad_t" value="$(arg pad_thickness)"/>
+
+  <material name="frame_dark">
+    <color rgba="0.26 0.27 0.29 1.0"/>
+  </material>
+  <material name="frame_light">
+    <color rgba="0.44 0.45 0.47 1.0"/>
+  </material>
+
+  <!-- a length of tube: cylinders default to lying along Z, so a bar along
+       another axis is the same macro with a different rpy -->
+  <xacro:macro name="tube" params="name radius length parent *origin material">
+    <link name="${name}">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${radius}" length="${length}"/>
+        </geometry>
+        <material name="${material}"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${radius}" length="${length}"/>
+        </geometry>
+      </collision>
+    </link>
+    <joint name="${parent}_to_${name}" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}"/>
+      <xacro:insert_block name="origin"/>
+    </joint>
+  </xacro:macro>
+
+  <!-- the face an arm bolts to. Its origin and rpy are the arm base's own,
+       so it tilts with tilt_deg and sits flush under the flange. -->
+  <xacro:macro name="mount_pad" params="name *origin">
+    <link name="${name}">
+      <visual>
+        <origin xyz="0 0 ${-pad_t/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${pad_r}" length="${pad_t}"/>
+        </geometry>
+        <material name="frame_light"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${-pad_t/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${pad_r}" length="${pad_t}"/>
+        </geometry>
+      </collision>
+    </link>
+    <joint name="world_to_${name}" type="fixed">
+      <parent link="world"/>
+      <child link="${name}"/>
+      <xacro:insert_block name="origin"/>
+    </joint>
+  </xacro:macro>
+
+  <link name="world"/>
+
+  <!--
+    cell.yaml describes the UR controller/DH `base` frame used by Cartesian
+    motion and by ur5dual/ur_kinematics.py.  The upstream macro, however,
+    attaches its REP-103 `base_link` to `parent`; inside the macro `base` is
+    base_link rotated pi about Z.  Give the macro the inverse fixed rotation
+    here so its controller `base` lands exactly on the configured frame.
+
+      world -> configured mount -> Rz(pi) -> base_link -> Rz(pi) -> base
+                                                     = configured mount
+
+    Without this compensation, the solver's "world" and RViz's world differ
+    by a local half-turn.  On a tilted mounting that makes a world-Z jog look
+    like motion along the robot base instead of vertical motion in the cell.
+  -->
+  <link name="kinematic_mount_A"/>
+  <joint name="world_to_kinematic_mount_A" type="fixed">
+    <parent link="world"/>
+    <child link="kinematic_mount_A"/>
+    <origin xyz="$(arg a_xyz)" rpy="$(arg a_rpy)"/>
+  </joint>
+
+  <link name="kinematic_mount_B"/>
+  <joint name="world_to_kinematic_mount_B" type="fixed">
+    <parent link="world"/>
+    <child link="kinematic_mount_B"/>
+    <origin xyz="$(arg b_xyz)" rpy="$(arg b_rpy)"/>
+  </joint>
+
+  <xacro:if value="$(arg show_frame)">
+    <!-- foot, mast, crossbar -->
+    <xacro:tube name="foot" radius="${col_r*2.4}" length="0.03"
+                parent="world" material="frame_dark">
+      <origin xyz="0 0 0.015" rpy="0 0 0"/>
+    </xacro:tube>
+
+    <xacro:tube name="mast" radius="${col_r}" length="${col_h}"
+                parent="world" material="frame_dark">
+      <origin xyz="0 0 ${col_h/2}" rpy="0 0 0"/>
+    </xacro:tube>
+
+    <!-- along the crossbar axis, which the pair yaw swings -->
+    <xacro:tube name="crossbar" radius="${bar_r}" length="${bar_len}"
+                parent="world" material="frame_light">
+      <origin xyz="0 0 ${col_h}" rpy="${pi/2} 0 $(arg yaw_rad)"/>
+    </xacro:tube>
+
+    <xacro:mount_pad name="pad_A">
+      <origin xyz="$(arg a_xyz)" rpy="$(arg a_rpy)"/>
+    </xacro:mount_pad>
+    <xacro:mount_pad name="pad_B">
+      <origin xyz="$(arg b_xyz)" rpy="$(arg b_rpy)"/>
+    </xacro:mount_pad>
+  </xacro:if>
+
+  <xacro:ur_robot
+      name="arm_A"
+      tf_prefix="A_"
+      parent="kinematic_mount_A"
+      ur_type="${ur_type}"
+      joint_limits_parameters_file="${cfg}/joint_limits.yaml"
+      kinematics_parameters_file="${cfg}/default_kinematics.yaml"
+      physical_parameters_file="${cfg}/physical_parameters.yaml"
+      visual_parameters_file="${cfg}/visual_parameters.yaml"
+      generate_ros2_control_tag="false">
+    <origin xyz="0 0 0" rpy="0 0 ${pi}"/>
+  </xacro:ur_robot>
+
+  <xacro:ur_robot
+      name="arm_B"
+      tf_prefix="B_"
+      parent="kinematic_mount_B"
+      ur_type="${ur_type}"
+      joint_limits_parameters_file="${cfg}/joint_limits.yaml"
+      kinematics_parameters_file="${cfg}/default_kinematics.yaml"
+      physical_parameters_file="${cfg}/physical_parameters.yaml"
+      visual_parameters_file="${cfg}/visual_parameters.yaml"
+      generate_ros2_control_tag="false">
+    <origin xyz="0 0 0" rpy="0 0 ${pi}"/>
+  </xacro:ur_robot>
+
+</robot>
