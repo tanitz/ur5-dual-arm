@@ -94,14 +94,38 @@ check("but world +Z is 12 deg off real up",
       abs(r["world_error_deg"] - 12.0) < 1e-6, "%.3f deg" % r["world_error_deg"])
 
 a_to_b_before = cell.config.a_to_b()
+xyz_before = {a: cell.config.arms[a].xyz.copy() for a in "AB"}
 C.apply_level(cell.config, r)
 after = C.level_report(cell)
 check("levelling puts world +Z back on the vertical",
       after["world_error_deg"] < 1e-9, "%.2e deg" % after["world_error_deg"])
-check("and the A-to-B transform came through untouched",
-      np.allclose(cell.config.a_to_b(), a_to_b_before, atol=1e-12))
+check("and the arms still hold the same angle to each other",
+      np.allclose(cell.config.a_to_b()[:3, :3], a_to_b_before[:3, :3], atol=1e-12))
+# The default reading is that the column is plumb and the brackets are not,
+# so the flanges are exactly where they were: they are bolted to a column
+# that has not moved. Only what is bolted to them turned.
+check("the flanges stay on the column",
+      all(np.allclose(cell.config.arms[a].xyz, xyz_before[a], atol=1e-12)
+          for a in "AB"))
 check("the mount is marked measured afterwards",
       cell.config.mount["style"] == "custom")
+
+# The other reading of the same measurement, for a column that really is out
+# of plumb: the whole cell turns about its foot, so nothing about the pair
+# changes at all — it is the world frame that was mislabelled.
+print("a column that really is out of plumb")
+cell = make_cell(tip.T @ R_a, tip.T @ R_b)
+r = C.level_report(cell)
+a_to_b_before = cell.config.a_to_b()
+C.apply_level(cell.config, r, tipped=True)
+check("levelling puts world +Z back on the vertical",
+      C.level_report(cell)["world_error_deg"] < 1e-9)
+check("and the whole A-to-B transform came through untouched, translation too",
+      np.allclose(cell.config.a_to_b(), a_to_b_before, atol=1e-12))
+check("but the flanges have moved, by the height they stand at",
+      not any(np.allclose(cell.config.arms[a].xyz, xyz_before[a], atol=1e-4)
+              for a in "AB"),
+      "arm A now %s" % np.round(cell.config.arms["A"].xyz, 4))
 
 print("one bracket wrong: the arms themselves disagree")
 cell = make_cell(R_a, rot("x", 20.0).T @ R_b)

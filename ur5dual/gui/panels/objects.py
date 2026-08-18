@@ -75,10 +75,13 @@ class ObjectPanel(QWidget):
 
         v.addWidget(S.strip("Take hold — create Virtual Box"))
         self.origin_combo = QComboBox()
+        # "Object frame" is dropped from each line: the strip directly above
+        # already says what is being created, and the full sentences set this
+        # tab's minimum width all by themselves
         self.origin_combo.addItems([
-            "Object frame midway between the grippers",
-            "Object frame on arm A's TCP (A leads)",
-            "Object frame on arm B's TCP (B leads)",
+            "Midway between the grippers",
+            "On arm A's TCP (A leads)",
+            "On arm B's TCP (B leads)",
         ])
         self.origin_combo.setMinimumHeight(S.sx(40))
         self.origin_combo.setStyleSheet(S.combo())

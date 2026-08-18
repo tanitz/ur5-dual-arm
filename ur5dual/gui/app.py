@@ -1,15 +1,12 @@
-"""
-The dual-UR5 control panel.
+"""The dual-UR5 control panel.
 
-Two halves of the window, the shape of a teach pendant. The left half is the
-program: the step table and the buttons that run it, always in view, because
-that is the document being written and it is what the panel is for. The right
-half is everything you do to build it, in tabs — Points, Vars, Object, Jog.
+The program stays on the left and the teach/run tools stay in tabs on the
+right. REAL cell controls and STOP sit immediately above those tabs, leaving
+the program column untouched while keeping robot ownership visible.
 
-The Jog tab carries the cell down its own left column: mode, connect, STOP,
-both arms' readouts, the pair numbers and the message log. Jogging is where an
-operator stands and watches, so the state sits beside the buttons that change
-it rather than in a strip the program column would otherwise pay for.
+Messages are a one-line drawer along the bottom.  The Jog tab therefore gets
+the full right-hand width for three permanent targets — arm A, synchronized
+A+B, and arm B — instead of spending a third of that width on status.
 """
 
 import argparse
@@ -19,11 +16,11 @@ import sys
 import time
 
 import numpy as np
-from PyQt5.QtCore import QTimer, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QColor, QPalette
 from PyQt5.QtWidgets import (
-    QApplication, QComboBox, QGridLayout, QHBoxLayout, QMainWindow,
-    QPlainTextEdit, QTabWidget, QVBoxLayout, QWidget,
+    QApplication, QHBoxLayout, QMainWindow,
+    QLabel, QPlainTextEdit, QTabWidget, QVBoxLayout, QWidget,
 )
 
 REPO_ROOT = os.path.dirname(os.path.dirname(
@@ -40,7 +37,6 @@ from ur5dual.gui.panels.jog import JogPanel                   # noqa: E402
 from ur5dual.gui.panels.objects import ObjectPanel            # noqa: E402
 from ur5dual.gui.panels.points import PointsPanel             # noqa: E402
 from ur5dual.gui.panels.program import ProgramPanel           # noqa: E402
-from ur5dual.gui.widgets.monitor import ArmMonitor, PairMonitor  # noqa: E402
 from ur5dual.program.executor import Executor                 # noqa: E402
 from ur5dual.program.steps import PointLibrary                # noqa: E402
 
@@ -52,7 +48,14 @@ PROGRAMS_DIR = os.path.join(REPO_ROOT, "config", "programs")
 
 # half the 1280x800 design width, less the margins between the two columns
 PROGRAM_COL_W = 620
-PROGRAM_COL_MIN_W = 520
+# and what it gives back when the screen is smaller than that. The step table
+# reads fine narrow; the tabs beside it hold grids of touch buttons that do not.
+PROGRAM_COL_MIN_W = 470
+
+# What a window manager keeps for a title bar. Only ever used to decide how
+# much of the screen the layout may plan on; run --fullscreen and the panel
+# gets all of it and its design size back.
+TITLE_BAR_PX = 40
 
 
 class MainWindow(QMainWindow):
@@ -65,24 +68,20 @@ class MainWindow(QMainWindow):
     # 'QTextCursor'" is warning about just before the segfault.
     log_message = pyqtSignal(str)
 
-    def __init__(self, config_path=DEFAULT_PATH):
+    def __init__(self, config_path=DEFAULT_PATH, cell=None,
+                 connect_on_start=True):
         super().__init__()
         self.setWindowTitle("Dual UR5 control")
 
-        # Built simulated, matching the mode selector's default. Opening a
-        # panel next to two robots must not be the act that reaches out to
-        # them; REAL is a thing you choose.
-        self.cell = Cell(CellConfig.load(config_path), simulated=True)
+        # This installation is a REAL-only control panel.  Supplying a cell is
+        # kept as a test seam; normal startup builds the two live arms here.
+        self.cell = cell or Cell(CellConfig.load(config_path), simulated=False)
         self.cell.listeners.append(self.log)
         self.points = PointLibrary()
         self.executor = Executor(self.cell, self.points)
         self.executor.on_log = self.log
         self.coordinator_start_error = None
-        # SIM until told otherwise. The panel comes up next to two robots that
-        # can reach each other, and a default that moves them is a default that
-        # is wrong exactly once.
-        self.mode = "sim"
-        self._rviz_hint_given = False
+        self.mode = "real"
         self.grip_output = 0
         self.object_count = 0
         self.programs_dir = PROGRAMS_DIR
@@ -100,28 +99,48 @@ class MainWindow(QMainWindow):
         self.timer.start(60)
 
         self._refresh_connect_buttons()
+        if connect_on_start and not self.cell.simulated:
+            # Claim the RViz channel before either 30003 feed is opened; arm A
+            # cannot serve the panel and viewer at the same time.
+            for _ in range(3):
+                self.cell.publish_sim_view(lease=20.0)
+                time.sleep(0.03)
+            self.cell.connect()
+            self._refresh_connect_buttons()
 
     # ---- layout ----------------------------------------------------------
     def _build(self):
-        # the cell column is built first and handed to the Jog tab: the panels
-        # below already reach into these widgets (mode, connect buttons, the
-        # log), and the tab is only where they are shown
-        status = self._build_status()
+        self.safety_bar = self._build_safety_bar()
         self.panels = {
             "program": ProgramPanel(self),
             "points": PointsPanel(self),
             "vars": CellSetupPanel(self),
             "objects": ObjectPanel(self),
-            "jog": JogPanel(self, status),
+            "jog": JogPanel(self),
         }
         self.panels["vars"].geometry_changed.connect(self._geometry_changed)
 
         central = QWidget()
-        body = QHBoxLayout(central)
-        body.setContentsMargins(S.sx(4), S.sx(4), S.sx(4), S.sx(4))
+        outer = QVBoxLayout(central)
+        outer.setContentsMargins(S.sx(4), S.sx(4), S.sx(4), S.sx(4))
+        outer.setSpacing(S.sx(4))
+        work = QWidget()
+        body = QHBoxLayout(work)
+        body.setContentsMargins(0, 0, 0, 0)
         body.setSpacing(S.sx(6))
+        # The program keeps its useful editing width; everything it gives back
+        # belongs to the three-column Jog surface on the right.
         body.addWidget(self._build_program(), 1)
-        body.addWidget(self._build_tabs(), 1)
+
+        right = QWidget()
+        right_v = QVBoxLayout(right)
+        right_v.setContentsMargins(0, 0, 0, 0)
+        right_v.setSpacing(S.sx(4))
+        right_v.addWidget(self.safety_bar, 0)
+        right_v.addWidget(self._build_tabs(), 1)
+        body.addWidget(right, 2)
+        outer.addWidget(work, 1)
+        outer.addWidget(self._build_messages(), 0)
         self.setCentralWidget(central)
 
     def _build_program(self):
@@ -135,78 +154,77 @@ class MainWindow(QMainWindow):
         page.setMaximumWidth(S.sx(PROGRAM_COL_W))
         return page
 
-    def _build_status(self):
+    def _build_safety_bar(self):
+        """Controls that must remain visible regardless of the selected tab."""
         page = QWidget()
-        # not fixed: the readouts need this much, the jog grid beside them
-        # wants every pixel that is left
-        page.setMinimumWidth(S.sx(330))
-        page.setMaximumWidth(S.sx(370))
-        v = QVBoxLayout(page)
-        v.setContentsMargins(0, 0, 0, 0)
-        v.setSpacing(S.sx(4))
+        row = QHBoxLayout(page)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(S.sx(4))
 
-        # The mode sits above everything, because it is the answer to the only
-        # question an operator has on walking up to this panel: is pressing a
-        # button on it going to move a robot.
-        v.addWidget(S.strip("Mode"))
-        self.mode_combo = QComboBox()
-        self.mode_combo.addItems([
-            "SIM — RViz moves, the arms do not",
-            "REAL — the arms move",
-        ])
-        self.mode_combo.setMinimumHeight(S.sx(46))
-        self.mode_combo.setStyleSheet(S.combo())
-        self.mode_combo.currentIndexChanged.connect(self._mode_changed)
-        v.addWidget(self.mode_combo)
+        self.real_indicator = QLabel("REAL  ●")
+        self.real_indicator.setMinimumHeight(S.sx(52))
+        self.real_indicator.setAlignment(Qt.AlignCenter)
+        self.real_indicator.setStyleSheet(
+            f"background:{S.RED};color:white;font-weight:bold;"
+            f"font-size:{S.fpx(14)}px;border-radius:{S.sx(6)}px;")
+        row.addWidget(self.real_indicator, 1)
 
-        v.addWidget(S.strip("Cell"))
-        grid = QGridLayout()
-        grid.setSpacing(S.sx(4))
         self.conn_btns = {}
-        for col, arm_id in enumerate(ARM_IDS):
-            button = S.touch_button("Connect %s" % arm_id, S.GREEN, height=40,
+        for arm_id in ARM_IDS:
+            button = S.touch_button("Connect %s" % arm_id, S.GREEN, height=52,
                                     font_px=13)
             button.clicked.connect(lambda _c=False, a=arm_id: self._toggle(a))
-            grid.addWidget(button, 0, col)
+            row.addWidget(button, 1)
             self.conn_btns[arm_id] = button
 
-        # Only useful, and only offered, while the cell is simulated. It
-        # restores both arms to their configured ready posture.
-        self.ready_btn = S.touch_button("Ready pose", S.BLUE, height=40,
-                                        font_px=13)
-        self.ready_btn.clicked.connect(self._sim_ready_pose)
-        grid.addWidget(self.ready_btn, 0, len(ARM_IDS))
-
-        for col, (label, command) in enumerate((("Power on", "power on"),
-                                                ("Brakes", "brake release"),
-                                                ("Unlock", "unlock protective stop"))):
-            button = S.touch_button(label, height=36, font_px=12)
+        self.dashboard_btns = {}
+        for label, command in (("Power", "power on"),
+                               ("Brakes", "brake release"),
+                               ("Unlock", "unlock protective stop")):
+            button = S.touch_button(label, height=52, font_px=12)
             button.clicked.connect(lambda _c=False, c=command: self._dashboard(c))
-            grid.addWidget(button, 1, col)
-        v.addLayout(grid)
+            row.addWidget(button, 1)
+            self.dashboard_btns[label] = button
 
-        self.stop_btn = S.touch_button("■   STOP", S.RED, height=58, font_px=20)
+        self.stop_btn = S.touch_button("■  STOP", S.RED, height=52, font_px=18)
         self.stop_btn.clicked.connect(self._stop_everything)
-        v.addWidget(self.stop_btn)
+        row.addWidget(self.stop_btn, 2)
+        return page
 
-        self.monitors = {}
-        for arm_id in ARM_IDS:
-            v.addWidget(S.arm_strip(arm_id, "Arm %s" % arm_id))
-            monitor = ArmMonitor(arm_id)
-            self.monitors[arm_id] = monitor
-            v.addWidget(monitor)
+    def _build_messages(self):
+        """A single-line log that expands only when its history is wanted."""
+        page = QWidget()
+        v = QVBoxLayout(page)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(S.sx(3))
 
-        v.addWidget(S.strip("Both arms"))
-        self.pair = PairMonitor()
-        v.addWidget(self.pair)
+        row = QHBoxLayout()
+        row.setSpacing(S.sx(6))
+        title = S.strip("Messages")
+        title.setFixedWidth(S.sx(100))
+        row.addWidget(title, 0)
+        self.last_message = QLabel("Ready")
+        self.last_message.setStyleSheet(
+            f"font-size:{S.fpx(12)}px;color:#333333;padding-left:{S.sx(4)}px;")
+        row.addWidget(self.last_message, 1)
+        self.messages_btn = S.touch_button("Expand ▲", height=34, font_px=12,
+                                           checkable=True)
+        self.messages_btn.toggled.connect(self._toggle_messages)
+        row.addWidget(self.messages_btn, 0)
+        v.addLayout(row)
 
-        v.addWidget(S.strip("Messages"))
         self.msg_box = QPlainTextEdit()
         self.msg_box.setReadOnly(True)
         self.msg_box.setMaximumBlockCount(400)
         self.msg_box.setStyleSheet(f"font-size:{S.fpx(12)}px;")
+        self.msg_box.setFixedHeight(S.sx(130))
+        self.msg_box.hide()
         v.addWidget(self.msg_box, 1)
         return page
+
+    def _toggle_messages(self, expanded):
+        self.msg_box.setVisible(expanded)
+        self.messages_btn.setText("Collapse ▼" if expanded else "Expand ▲")
 
     def _build_tabs(self):
         self.tabs = QTabWidget()
@@ -216,8 +234,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.panels["objects"], "Object")
         jog = self.panels["jog"]
         self.tabs.addTab(jog, "Jog")
-        # by widget, not by index: adding a tab must not change which page the
-        # panel opens on, and it opens on the one with the cell down its side
+        # By widget, not by index: adding a tab must not change the opening page.
         self.tabs.setCurrentWidget(jog)
         self.tabs.currentChanged.connect(self._tab_changed)
         return self.tabs
@@ -237,6 +254,7 @@ class MainWindow(QMainWindow):
 
     def _append_log(self, line):
         self.msg_box.appendPlainText(line)
+        self.last_message.setText(line)
 
     def attach(self, origin="midpoint"):
         """Freeze the current grip and bring up the coordinated servo loop.
@@ -336,63 +354,6 @@ class MainWindow(QMainWindow):
         self.coordinator_start_error = None
         return True
 
-    def _sim_ready_pose(self):
-        if self.executor.object.held:
-            self.log("let go before moving the arms to the ready posture — "
-                     "the grip was captured where they are now")
-            return
-        self.cell.sim_ready_pose()
-
-    def _mode_changed(self, index):
-        """Switch between driving the drawing and driving the robots.
-
-        The servo loop is torn down and rebuilt rather than switched in place.
-        Half of what the mode decides is settled when the loop starts — which
-        backend each arm gets, whether the solver runs, which guards are armed
-        — and a loop that changed its mind about those mid-flight would be a
-        loop nobody could reason about while two arms held a workpiece.
-
-        Whatever is held stays held. Only the question of where its targets go
-        is being answered differently.
-        """
-        wanted = "real" if index == 1 else "sim"
-        if wanted == self.mode:
-            return
-        self.mode = wanted
-        self.stop_coordinator()
-        # Whatever was held was held by the arms that are about to be replaced,
-        # and its grasp transforms were measured against them. Carrying that
-        # across would be claiming a grip that no longer refers to anything.
-        if self.executor.object.held:
-            self.executor.object.release()
-            self.log("let go of the object — its grip was captured on the "
-                     "other set of arms")
-        self.cell.set_simulated(wanted == "sim")
-        self._refresh_connect_buttons()
-        self.panels["jog"].mode_changed()
-        self.panels["objects"].refresh()
-        self.log("mode: %s" % (
-            "REAL — object moves drive both arms"
-            if wanted == "real" else
-            "SIM — nothing is sent to a robot; the arms here are arithmetic"))
-        if wanted == "real":
-            # Announce ownership before opening 30003.  The RViz bridge polls
-            # loopback at 50 Hz and drops its fallback robot sockets as soon
-            # as it sees this; a short handover prevents old controllers from
-            # ever having to choose between two real-time clients.
-            for _ in range(3):
-                # Connecting can block while a powered-off arm times out.  The
-                # lease keeps RViz from reclaiming 30003 during that quiet
-                # interval; normal 60 ms heartbeats take over once connected.
-                self.cell.publish_sim_view(lease=20.0)
-                time.sleep(0.03)
-            self.cell.connect()
-            self._refresh_connect_buttons()
-        elif not self._rviz_hint_given:
-            self._rviz_hint_given = True
-            self.log("run scripts/ur5dual-rviz to watch it; RViz receives both "
-                     "SIM and REAL joint states from this panel")
-
     def stop_coordinator(self):
         if self.executor.coordinator is not None:
             self.executor.coordinator.shutdown()
@@ -423,7 +384,6 @@ class MainWindow(QMainWindow):
 
     def _refresh_connect_buttons(self):
         sim = self.cell.simulated
-        self.ready_btn.setVisible(sim)
         for arm_id, button in self.conn_btns.items():
             connected = self.cell.arms[arm_id].connected
             if sim:
@@ -433,7 +393,7 @@ class MainWindow(QMainWindow):
                 button.setText("%s simulated" % arm_id)
                 button.setStyleSheet(S.pill(13))
                 button.setEnabled(False)
-                button.setToolTip("switch to REAL mode to reach the controller")
+                button.setToolTip("simulated test cell")
                 continue
             button.setEnabled(True)
             button.setToolTip("")
@@ -490,15 +450,10 @@ class MainWindow(QMainWindow):
             self.log("servo loop ended — letting go so you can take hold again")
             self.detach()
 
-        limit = float(self.cell.config.motion["max_tcp_force"])
         for arm_id in ARM_IDS:
             arm = self.cell.arms[arm_id]
             while arm.stream_events:
                 self.log(arm.stream_events.pop(0))
-        for arm_id, monitor in self.monitors.items():
-            monitor.update_from(self.cell.arms[arm_id], limit)
-        self.pair.update_from(self.cell, self.executor.object,
-                              float(self.cell.config.motion["max_pair_drift"]))
         for panel in self.panels.values():
             if hasattr(panel, "tick"):
                 panel.tick()
@@ -523,21 +478,49 @@ def main():
     parser = argparse.ArgumentParser(description="Dual UR5 control panel")
     parser.add_argument("--config", default=DEFAULT_PATH)
     parser.add_argument("--scale", type=float, default=None,
-                        help="UI scale; 1.0 is the 1280x800 panel design size")
+                        help="UI scale; 1.0 is the 1280x800 panel design size. "
+                             "Left out, the panel measures the screen and fits "
+                             "itself to it")
     parser.add_argument("--fullscreen", action="store_true")
     args = parser.parse_args()
-
-    if args.scale:
-        S.set_scale(args.scale)
 
     app = QApplication(sys.argv)
     palette = app.palette()
     palette.setColor(QPalette.Window, QColor("#f4f4f4"))
     app.setPalette(palette)
 
+    # How much room the layout will really have, measured before anything is
+    # built — every widget below asks sx() for its size exactly once, so the
+    # scale has to be settled first.
+    #
+    # Fullscreen gets the screen. Anything else gets availableGeometry, which
+    # is the screen less the desktop's own dock and top bar, less a title bar
+    # on top of that: a maximised window keeps its frame inside the work area,
+    # so the layout has that much less height than availableGeometry reports
+    # and nothing in Qt will tell us how much before a window exists.
+    # Over-reserving costs a few unused pixels along the bottom;
+    # under-reserving puts the window back off the edge of the screen, which is
+    # the whole thing being fixed here.
+    screen = app.primaryScreen()
+    area = screen.geometry() if args.fullscreen else screen.availableGeometry()
+    height = area.height() - (0 if args.fullscreen else TITLE_BAR_PX)
+    if args.scale:
+        S.set_scale(args.scale)
+    else:
+        S.fit_to(area.width(), height)
+
     window = MainWindow(args.config)
-    window.resize(S.sx(1280), S.sx(800))
-    window.showFullScreen() if args.fullscreen else window.show()
+    if args.fullscreen:
+        window.showFullScreen()
+    elif S.UI_SCALE < 1.0:
+        # Having had to shrink to fit, take every pixel the desktop will give:
+        # maximised, the window manager fits the frame to the work area, and
+        # what the layout gets over its minimum goes to the jog grid and the
+        # message log rather than to wallpaper.
+        window.showMaximized()
+    else:
+        window.resize(S.sx(S.DESIGN_W), S.sx(S.DESIGN_H))
+        window.show()
     sys.exit(app.exec_())
 
 

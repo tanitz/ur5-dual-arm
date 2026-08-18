@@ -13,6 +13,12 @@
   drawing the face the arm is supposed to be bolted to turns a geometry error
   into something visible.
 
+  Which is why the structure hangs off `mount_frame` and not off `world`. The
+  mast is welded to the flanges, so it has to move with them: level the cell
+  against gravity and both bases turn by the same few degrees, and a mast
+  nailed to world +Z would stay upright with the arms leaning off the ends of
+  it. launch_support.py works that frame out from the two base transforms.
+
   ros2_control tags are switched off — this description exists to be looked
   at, not to be driven. The robots are driven over their own sockets.
 
@@ -38,10 +44,12 @@
   <xacro:arg name="column_height" default="1.2"/>
   <xacro:arg name="column_radius" default="0.06"/>
   <xacro:arg name="crossbar_radius" default="0.05"/>
-  <xacro:arg name="spacing" default="0.5"/>
+  <xacro:arg name="bar_length" default="0.5"/>
   <xacro:arg name="pad_radius" default="0.075"/>
   <xacro:arg name="pad_thickness" default="0.022"/>
-  <xacro:arg name="yaw_rad" default="0"/>
+  <!-- middle of the crossbar, +Y along the bar towards arm A, +Z up the mast -->
+  <xacro:arg name="frame_xyz" default="0 0 1.2"/>
+  <xacro:arg name="frame_rpy" default="0 0 0"/>
 
   <xacro:include filename="$(find ur_description)/urdf/ur_macro.xacro"/>
 
@@ -50,7 +58,7 @@
   <xacro:property name="col_h" value="$(arg column_height)"/>
   <xacro:property name="col_r" value="$(arg column_radius)"/>
   <xacro:property name="bar_r" value="$(arg crossbar_radius)"/>
-  <xacro:property name="bar_len" value="$(arg spacing)"/>
+  <xacro:property name="bar_len" value="$(arg bar_length)"/>
   <xacro:property name="pad_r" value="$(arg pad_radius)"/>
   <xacro:property name="pad_t" value="$(arg pad_thickness)"/>
 
@@ -142,21 +150,30 @@
   </joint>
 
   <xacro:if value="$(arg show_frame)">
+    <!-- the structure, hung off the flanges it is welded to. Everything below
+         is measured down and along from the middle of the crossbar. -->
+    <link name="mount_frame"/>
+    <joint name="world_to_mount_frame" type="fixed">
+      <parent link="world"/>
+      <child link="mount_frame"/>
+      <origin xyz="$(arg frame_xyz)" rpy="$(arg frame_rpy)"/>
+    </joint>
+
     <!-- foot, mast, crossbar -->
     <xacro:tube name="foot" radius="${col_r*2.4}" length="0.03"
-                parent="world" material="frame_dark">
-      <origin xyz="0 0 0.015" rpy="0 0 0"/>
+                parent="mount_frame" material="frame_dark">
+      <origin xyz="0 0 ${0.015 - col_h}" rpy="0 0 0"/>
     </xacro:tube>
 
     <xacro:tube name="mast" radius="${col_r}" length="${col_h}"
-                parent="world" material="frame_dark">
-      <origin xyz="0 0 ${col_h/2}" rpy="0 0 0"/>
+                parent="mount_frame" material="frame_dark">
+      <origin xyz="0 0 ${-col_h/2}" rpy="0 0 0"/>
     </xacro:tube>
 
-    <!-- along the crossbar axis, which the pair yaw swings -->
+    <!-- along the frame's own Y, which is the line between the two flanges -->
     <xacro:tube name="crossbar" radius="${bar_r}" length="${bar_len}"
-                parent="world" material="frame_light">
-      <origin xyz="0 0 ${col_h}" rpy="${pi/2} 0 $(arg yaw_rad)"/>
+                parent="mount_frame" material="frame_light">
+      <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
     </xacro:tube>
 
     <xacro:mount_pad name="pad_A">

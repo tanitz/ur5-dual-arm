@@ -67,7 +67,13 @@ DEFAULTS = {
         "rotate_deg_A": 0.0,        # about the arm's own base Z, from the pendant
         "rotate_deg_B": 0.0,
         "yaw_deg": 0.0,             # rotation of the whole pair about the column
-        # tube frame, drawing only — none of this affects the kinematics
+        # tube frame, drawing only — none of this affects the kinematics.
+        # Kept separate from `style` on purpose: a calibrated cell switches to
+        # `custom` so the preset stops overwriting measured base transforms,
+        # and that has nothing to do with whether the mast is still there to
+        # be drawn. Tying the two together made RViz drop the frame the moment
+        # the cell was measured.
+        "show_frame": True,
         "column_radius": 0.06,
         "crossbar_radius": 0.05,
         "pad_radius": 0.075,        # a UR5 base flange is 149 mm across
@@ -145,6 +151,10 @@ HEADER = """\
 # mount.style = pedestal derives those base transforms from four measurable
 # numbers instead (column height, shoulder spacing, outward tilt, pair yaw).
 # Any edit to arms.<id>.base by hand or by the wizard switches it to custom.
+#
+# mount.show_frame only decides whether RViz draws the mast and crossbar. It
+# is deliberately independent of style, so a calibrated (custom) cell still
+# shows the structure it is bolted to. Set it false for a cell with no mast.
 #
 # motion.backend picks how the 125 Hz coordinated loop talks to the robots:
 #   rtde      ur_rtde servoL/servoJ  (default)
@@ -287,6 +297,57 @@ class CellConfig:
         """Degrees of tilt for one arm, falling back to the shared figure."""
         per_arm = self.mount.get("tilt_deg_%s" % arm_id)
         return float(self.mount["tilt_deg"] if per_arm is None else per_arm)
+
+    def mount_frame_matrix(self):
+        """world -> the T-frame: origin in the middle of the crossbar, +Y along
+        the bar towards arm A, +Z up the mast.
+
+        Read out of where the two flanges actually are, not out of the mount
+        numbers, because the flanges are what the structure is welded to. The
+        preset builds the bases from `world` and so did the drawing, which is
+        fine until something moves the bases relative to `world` — levelling
+        the cell against gravity turns both of them by the same rotation, and
+        a mast drawn from `world` alone stays standing perfectly upright while
+        the arms it is holding tip over. That picture is of no cell that
+        exists, and it is the one thing in the view an operator uses to judge
+        whether a calibration came out sane.
+
+        The bar joins the two flange centres, so it cannot come away from
+        them. The mast is drawn plumb — square to the bar, and as near world
+        up as that leaves it.
+
+        Plumb by assumption, and deliberately: a bolted steel column is, and
+        the alternative is worse. Reading the mast's direction back out of the
+        pad orientations sounds more honest and is a trap — every error in how
+        the arms are bolted to the bar then comes out as the whole cell
+        leaning, which is a picture convincing enough to send somebody
+        levelling a column that was never out of plumb. Bracket error belongs
+        on the pads, where it shows as an arm sitting askew on a square bar.
+        A bar tipped off level, or a foot that has walked off the floor, is
+        then the signature of something claiming the cell itself moved.
+        """
+        pa = self.arms["A"].xyz
+        pb = self.arms["B"].xyz
+        T = np.eye(4)
+        T[:3, 3] = (pa + pb) / 2.0
+
+        bar = pa - pb
+        length = float(np.linalg.norm(bar))
+        if length < 1e-9:          # one arm on top of the other: no bar to lie along
+            return T
+        y = bar / length
+
+        for candidate in (np.array([0.0, 0.0, 1.0]), np.array([1.0, 0.0, 0.0])):
+            square = candidate - float(candidate @ y) * y
+            norm = float(np.linalg.norm(square))
+            if norm > 1e-9:        # a bar stood on end has no plumb square to it
+                z = square / norm
+                break
+
+        T[:3, 0] = np.cross(y, z)
+        T[:3, 1] = y
+        T[:3, 2] = z
+        return T
 
     @property
     def calibrated(self):

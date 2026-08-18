@@ -1,0 +1,277 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 297" width="100%" style="max-width:100%;height:auto;background:#fff">
+<defs><pattern id="hatch" width="4" height="4" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><line x1="0" y1="0" x2="0" y2="4" stroke="#111" stroke-width="0.16"/></pattern></defs>
+<rect x="0" y="0" width="420" height="297" fill="#fff"/>
+<rect x="8" y="8" width="404" height="281" fill="none" stroke="#111" stroke-width="0.7"/>
+<circle cx="120.000" cy="108.000" r="75.000" fill="none" stroke="#111" stroke-width="0.50"/>
+<circle cx="120.000" cy="108.000" r="74.500" fill="none" stroke="#8a8a8a" stroke-width="0.18" stroke-dasharray="7 2 1 2"/>
+<circle cx="120.000" cy="108.000" r="66.000" fill="none" stroke="#111" stroke-width="0.18" stroke-dasharray="7 2 1 2"/>
+<circle cx="120.000" cy="108.000" r="40.000" fill="none" stroke="#111" stroke-width="0.18" stroke-dasharray="7 2 1 2"/>
+<circle cx="120.000" cy="108.000" r="20.000" fill="none" stroke="#111" stroke-width="0.50"/>
+<line x1="36.000" y1="108.000" x2="204.000" y2="108.000" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<line x1="120.000" y1="192.000" x2="120.000" y2="24.000" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<circle cx="166.669" cy="61.331" r="3.400" fill="none" stroke="#111" stroke-width="0.50"/>
+<path d="M 163.392 59.037 A 4.000 4.000 0 1 0 168.963 58.054" fill="none" stroke="#111" stroke-width="0.18"/>
+<path d="M 164.375 64.608 A 4.000 4.000 0 1 0 163.392 59.037" fill="none" stroke="#111" stroke-width="0.18"/>
+<path d="M 169.946 63.625 A 4.000 4.000 0 1 0 164.375 64.608" fill="none" stroke="#111" stroke-width="0.18"/>
+<line x1="159.669" y1="61.331" x2="173.669" y2="61.331" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<line x1="166.669" y1="68.331" x2="166.669" y2="54.331" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<circle cx="73.331" cy="61.331" r="3.400" fill="none" stroke="#111" stroke-width="0.50"/>
+<path d="M 71.037 64.608 A 4.000 4.000 0 1 0 70.054 59.037" fill="none" stroke="#111" stroke-width="0.18"/>
+<path d="M 76.608 63.625 A 4.000 4.000 0 1 0 71.037 64.608" fill="none" stroke="#111" stroke-width="0.18"/>
+<path d="M 75.625 58.054 A 4.000 4.000 0 1 0 76.608 63.625" fill="none" stroke="#111" stroke-width="0.18"/>
+<line x1="66.331" y1="61.331" x2="80.331" y2="61.331" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<line x1="73.331" y1="68.331" x2="73.331" y2="54.331" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<circle cx="73.331" cy="154.669" r="3.400" fill="none" stroke="#111" stroke-width="0.50"/>
+<path d="M 76.608 156.963 A 4.000 4.000 0 1 0 71.037 157.946" fill="none" stroke="#111" stroke-width="0.18"/>
+<path d="M 75.625 151.392 A 4.000 4.000 0 1 0 76.608 156.963" fill="none" stroke="#111" stroke-width="0.18"/>
+<path d="M 70.054 152.375 A 4.000 4.000 0 1 0 75.625 151.392" fill="none" stroke="#111" stroke-width="0.18"/>
+<line x1="66.331" y1="154.669" x2="80.331" y2="154.669" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<line x1="73.331" y1="161.669" x2="73.331" y2="147.669" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<circle cx="166.669" cy="154.669" r="3.400" fill="none" stroke="#111" stroke-width="0.50"/>
+<path d="M 168.963 151.392 A 4.000 4.000 0 1 0 169.946 156.963" fill="none" stroke="#111" stroke-width="0.18"/>
+<path d="M 163.392 152.375 A 4.000 4.000 0 1 0 168.963 151.392" fill="none" stroke="#111" stroke-width="0.18"/>
+<path d="M 164.375 157.946 A 4.000 4.000 0 1 0 163.392 152.375" fill="none" stroke="#111" stroke-width="0.18"/>
+<line x1="159.669" y1="154.669" x2="173.669" y2="154.669" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<line x1="166.669" y1="161.669" x2="166.669" y2="147.669" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<circle cx="186.000" cy="108.000" r="4.000" fill="none" stroke="#111" stroke-width="0.50"/>
+<line x1="179.000" y1="108.000" x2="193.000" y2="108.000" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<line x1="186.000" y1="115.000" x2="186.000" y2="101.000" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<circle cx="160.000" cy="108.000" r="7.500" fill="none" stroke="#111" stroke-width="0.50"/>
+<circle cx="160.000" cy="108.000" r="4.500" fill="none" stroke="#111" stroke-width="0.50"/>
+<line x1="150.000" y1="108.000" x2="170.000" y2="108.000" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<line x1="160.000" y1="118.000" x2="160.000" y2="98.000" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<circle cx="120.000" cy="68.000" r="7.500" fill="none" stroke="#111" stroke-width="0.50"/>
+<circle cx="120.000" cy="68.000" r="4.500" fill="none" stroke="#111" stroke-width="0.50"/>
+<line x1="110.000" y1="68.000" x2="130.000" y2="68.000" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<line x1="120.000" y1="78.000" x2="120.000" y2="58.000" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<circle cx="80.000" cy="108.000" r="7.500" fill="none" stroke="#111" stroke-width="0.50"/>
+<circle cx="80.000" cy="108.000" r="4.500" fill="none" stroke="#111" stroke-width="0.50"/>
+<line x1="70.000" y1="108.000" x2="90.000" y2="108.000" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<line x1="80.000" y1="118.000" x2="80.000" y2="98.000" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<circle cx="120.000" cy="148.000" r="7.500" fill="none" stroke="#111" stroke-width="0.50"/>
+<circle cx="120.000" cy="148.000" r="4.500" fill="none" stroke="#111" stroke-width="0.50"/>
+<line x1="110.000" y1="148.000" x2="130.000" y2="148.000" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<line x1="120.000" y1="158.000" x2="120.000" y2="138.000" stroke="#111" stroke-width="0.18" stroke-dasharray="6 1.5 1 1.5"/>
+<line x1="31.000" y1="108.000" x2="39.000" y2="108.000" stroke="#111" stroke-width="0.70"/>
+<line x1="201.000" y1="108.000" x2="209.000" y2="108.000" stroke="#111" stroke-width="0.70"/>
+<polygon points="39.000,108.000 42.200,107.550 42.200,108.450" fill="#111"/>
+<polygon points="201.000,108.000 197.800,108.450 197.800,107.550" fill="#111"/>
+<text x="29.500" y="106.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="4.00" fill="#111" text-anchor="end" font-weight="bold">A</text>
+<text x="210.500" y="106.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="4.00" fill="#111" text-anchor="start" font-weight="bold">A</text>
+<line x1="55.048" y1="145.500" x2="198.808" y2="62.500" stroke="#111" stroke-width="0.18"/>
+<polygon points="55.048,145.500 57.075,143.810 57.525,144.590" fill="#111"/>
+<polygon points="184.952,70.500 182.925,72.190 182.475,71.410" fill="#111"/>
+<text x="200.308" y="63.500" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="start" font-weight="normal">⌀150</text>
+<line x1="144.724" y1="169.194" x2="90.406" y2="34.752" stroke="#111" stroke-width="0.18"/>
+<polygon points="144.724,169.194 143.333,166.952 144.167,166.615" fill="#111"/>
+<polygon points="95.276,46.806 96.667,49.048 95.833,49.385" fill="#111"/>
+<text x="88.906" y="35.752" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="end" font-weight="normal">⌀132 P.C.D.</text>
+<line x1="157.588" y1="94.319" x2="72.076" y2="125.443" stroke="#111" stroke-width="0.18"/>
+<polygon points="157.588,94.319 155.298,95.631 154.991,94.786" fill="#111"/>
+<polygon points="82.412,121.681 84.702,120.369 85.009,121.214" fill="#111"/>
+<text x="70.576" y="126.443" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="end" font-weight="normal">⌀80 P.C.D.</text>
+<line x1="73.331" y1="61.331" x2="20.000" y2="62.800" stroke="#111" stroke-width="0.18"/>
+<line x1="20.000" y1="62.800" x2="24.000" y2="62.800" stroke="#111" stroke-width="0.18"/>
+<polygon points="73.331,61.331 70.744,61.852 70.720,60.953" fill="#111"/>
+<text x="24.000" y="64.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="start" font-weight="normal">4x M8 ↓18</text>
+<text x="24.000" y="67.600" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.40" fill="#111" text-anchor="start" font-weight="normal">ยึดฐาน UR5</text>
+<text x="24.000" y="71.200" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.40" fill="#111" text-anchor="start" font-weight="normal">ดอกสว่าน 6.8 ↓21</text>
+<line x1="186.000" y1="108.000" x2="176.000" y2="168.800" stroke="#111" stroke-width="0.18"/>
+<line x1="176.000" y1="168.800" x2="180.000" y2="168.800" stroke="#111" stroke-width="0.18"/>
+<polygon points="186.000,108.000 186.022,110.639 185.134,110.492" fill="#111"/>
+<text x="180.000" y="170.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="start" font-weight="normal">⌀8 H7 ↓12</text>
+<text x="180.000" y="173.600" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.40" fill="#111" text-anchor="start" font-weight="normal">หมุดกำหนดตำแหน่ง (NOTE 5)</text>
+<line x1="120.000" y1="60.500" x2="142.000" y2="44.800" stroke="#111" stroke-width="0.18"/>
+<line x1="142.000" y1="44.800" x2="146.000" y2="44.800" stroke="#111" stroke-width="0.18"/>
+<polygon points="120.000,60.500 121.855,58.623 122.378,59.356" fill="#111"/>
+<text x="146.000" y="46.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="start" font-weight="normal">4x ⌀9 THRU</text>
+<text x="146.000" y="49.600" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.40" fill="#111" text-anchor="start" font-weight="normal">ผายหัว ⌀15 ↓11</text>
+<text x="146.000" y="53.200" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.40" fill="#111" text-anchor="start" font-weight="normal">ยึดกับคานขวาง</text>
+<line x1="105.800" y1="122.200" x2="24.000" y2="146.800" stroke="#111" stroke-width="0.18"/>
+<line x1="24.000" y1="146.800" x2="28.000" y2="146.800" stroke="#111" stroke-width="0.18"/>
+<polygon points="105.800,122.200 103.440,123.380 103.181,122.518" fill="#111"/>
+<text x="28.000" y="148.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="start" font-weight="normal">⌀40 THRU</text>
+<text x="28.000" y="151.600" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.40" fill="#111" text-anchor="start" font-weight="normal">ช่องเดินสาย</text>
+<text x="135.989" y="70.333" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.40" fill="#111" text-anchor="middle" font-weight="normal">45°</text>
+<path d="M 148.935 79.065 A 40.920 40.920 0 0 0 120.000 67.080" fill="none" stroke="#111" stroke-width="0.18"/>
+<text x="120.000" y="213.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.60" fill="#111" text-anchor="middle" font-weight="bold">VIEW A  —  หน้าประกบหุ่นยนต์   SCALE 1:1</text>
+<rect x="45.000" y="232.000" width="5.000" height="22.000" fill="url(#hatch)" stroke="none"/>
+<rect x="58.000" y="232.000" width="14.500" height="22.000" fill="url(#hatch)" stroke="none"/>
+<rect x="87.500" y="232.000" width="12.500" height="22.000" fill="url(#hatch)" stroke="none"/>
+<rect x="140.000" y="232.000" width="12.500" height="22.000" fill="url(#hatch)" stroke="none"/>
+<rect x="167.500" y="232.000" width="14.500" height="22.000" fill="url(#hatch)" stroke="none"/>
+<rect x="190.000" y="232.000" width="5.000" height="22.000" fill="url(#hatch)" stroke="none"/>
+<rect x="72.500" y="232.000" width="15.000" height="22.000" fill="url(#hatch)" stroke="none"/>
+<rect x="152.500" y="232.000" width="15.000" height="22.000" fill="url(#hatch)" stroke="none"/>
+<line x1="45.000" y1="232.000" x2="195.000" y2="232.000" stroke="#111" stroke-width="0.50"/>
+<line x1="45.000" y1="254.000" x2="195.000" y2="254.000" stroke="#111" stroke-width="0.50"/>
+<line x1="45.000" y1="232.000" x2="45.000" y2="254.000" stroke="#111" stroke-width="0.50"/>
+<line x1="195.000" y1="232.000" x2="195.000" y2="254.000" stroke="#111" stroke-width="0.50"/>
+<line x1="100.000" y1="232.000" x2="100.000" y2="254.000" stroke="#111" stroke-width="0.50"/>
+<line x1="140.000" y1="232.000" x2="140.000" y2="254.000" stroke="#111" stroke-width="0.50"/>
+<line x1="75.500" y1="243.000" x2="75.500" y2="254.000" stroke="#111" stroke-width="0.50"/>
+<line x1="72.500" y1="232.000" x2="72.500" y2="243.000" stroke="#111" stroke-width="0.50"/>
+<line x1="84.500" y1="243.000" x2="84.500" y2="254.000" stroke="#111" stroke-width="0.50"/>
+<line x1="87.500" y1="232.000" x2="87.500" y2="243.000" stroke="#111" stroke-width="0.50"/>
+<line x1="72.500" y1="243.000" x2="75.500" y2="243.000" stroke="#111" stroke-width="0.50"/>
+<line x1="84.500" y1="243.000" x2="87.500" y2="243.000" stroke="#111" stroke-width="0.50"/>
+<line x1="155.500" y1="243.000" x2="155.500" y2="254.000" stroke="#111" stroke-width="0.50"/>
+<line x1="152.500" y1="232.000" x2="152.500" y2="243.000" stroke="#111" stroke-width="0.50"/>
+<line x1="164.500" y1="243.000" x2="164.500" y2="254.000" stroke="#111" stroke-width="0.50"/>
+<line x1="167.500" y1="232.000" x2="167.500" y2="243.000" stroke="#111" stroke-width="0.50"/>
+<line x1="152.500" y1="243.000" x2="155.500" y2="243.000" stroke="#111" stroke-width="0.50"/>
+<line x1="164.500" y1="243.000" x2="167.500" y2="243.000" stroke="#111" stroke-width="0.50"/>
+<line x1="50.600" y1="232.000" x2="50.600" y2="253.000" stroke="#111" stroke-width="0.50"/>
+<line x1="50.000" y1="232.000" x2="50.000" y2="250.000" stroke="#111" stroke-width="0.18"/>
+<line x1="57.400" y1="232.000" x2="57.400" y2="253.000" stroke="#111" stroke-width="0.50"/>
+<line x1="58.000" y1="232.000" x2="58.000" y2="250.000" stroke="#111" stroke-width="0.18"/>
+<line x1="50.600" y1="253.000" x2="57.400" y2="253.000" stroke="#111" stroke-width="0.50"/>
+<line x1="50.000" y1="250.000" x2="58.000" y2="250.000" stroke="#111" stroke-width="0.18"/>
+<line x1="182.000" y1="232.000" x2="182.000" y2="244.000" stroke="#111" stroke-width="0.50"/>
+<line x1="190.000" y1="232.000" x2="190.000" y2="244.000" stroke="#111" stroke-width="0.50"/>
+<line x1="182.000" y1="244.000" x2="190.000" y2="244.000" stroke="#111" stroke-width="0.50"/>
+<line x1="45.000" y1="252.000" x2="45.000" y2="278.500" stroke="#111" stroke-width="0.18"/>
+<line x1="195.000" y1="252.000" x2="195.000" y2="278.500" stroke="#111" stroke-width="0.18"/>
+<line x1="45.000" y1="280.000" x2="195.000" y2="280.000" stroke="#111" stroke-width="0.18"/>
+<polygon points="45.000,280.000 47.600,279.550 47.600,280.450" fill="#111"/>
+<polygon points="195.000,280.000 192.400,280.450 192.400,279.550" fill="#111"/>
+<text x="120.000" y="278.800" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="middle" font-weight="normal">150</text>
+<line x1="54.000" y1="230.000" x2="54.000" y2="221.500" stroke="#111" stroke-width="0.18"/>
+<line x1="120.000" y1="230.000" x2="120.000" y2="221.500" stroke="#111" stroke-width="0.18"/>
+<line x1="54.000" y1="220.000" x2="120.000" y2="220.000" stroke="#111" stroke-width="0.18"/>
+<polygon points="54.000,220.000 56.600,219.550 56.600,220.450" fill="#111"/>
+<polygon points="120.000,220.000 117.400,220.450 117.400,219.550" fill="#111"/>
+<text x="87.000" y="218.800" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="middle" font-weight="normal">66</text>
+<line x1="120.000" y1="230.000" x2="120.000" y2="213.500" stroke="#111" stroke-width="0.18"/>
+<line x1="160.000" y1="230.000" x2="160.000" y2="213.500" stroke="#111" stroke-width="0.18"/>
+<line x1="120.000" y1="212.000" x2="160.000" y2="212.000" stroke="#111" stroke-width="0.18"/>
+<polygon points="120.000,212.000 122.600,211.550 122.600,212.450" fill="#111"/>
+<polygon points="160.000,212.000 157.400,212.450 157.400,211.550" fill="#111"/>
+<text x="140.000" y="210.800" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="middle" font-weight="normal">40</text>
+<line x1="196.500" y1="232.000" x2="209.500" y2="232.000" stroke="#111" stroke-width="0.18"/>
+<line x1="196.500" y1="254.000" x2="209.500" y2="254.000" stroke="#111" stroke-width="0.18"/>
+<line x1="211.000" y1="232.000" x2="211.000" y2="254.000" stroke="#111" stroke-width="0.18"/>
+<polygon points="211.000,232.000 211.450,234.600 210.550,234.600" fill="#111"/>
+<polygon points="211.000,254.000 210.550,251.400 211.450,251.400" fill="#111"/>
+<text x="212.400" y="244.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="start" font-weight="normal">22</text>
+<line x1="48.500" y1="232.000" x2="35.500" y2="232.000" stroke="#111" stroke-width="0.18"/>
+<line x1="48.500" y1="250.000" x2="35.500" y2="250.000" stroke="#111" stroke-width="0.18"/>
+<line x1="34.000" y1="232.000" x2="34.000" y2="250.000" stroke="#111" stroke-width="0.18"/>
+<polygon points="34.000,232.000 34.450,234.600 33.550,234.600" fill="#111"/>
+<polygon points="34.000,250.000 33.550,247.400 34.450,247.400" fill="#111"/>
+<text x="35.400" y="242.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="start" font-weight="normal">18</text>
+<line x1="192.500" y1="232.000" x2="219.500" y2="232.000" stroke="#111" stroke-width="0.18"/>
+<line x1="192.500" y1="244.000" x2="219.500" y2="244.000" stroke="#111" stroke-width="0.18"/>
+<line x1="221.000" y1="232.000" x2="221.000" y2="244.000" stroke="#111" stroke-width="0.18"/>
+<polygon points="221.000,232.000 221.450,234.600 220.550,234.600" fill="#111"/>
+<polygon points="221.000,244.000 220.550,241.400 221.450,241.400" fill="#111"/>
+<text x="222.400" y="239.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="start" font-weight="normal">12</text>
+<text x="42.000" y="202.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.40" fill="#111" text-anchor="start" font-weight="normal">หน้า A (ประกบฐานหุ่นยนต์) — Ra 3.2, ระนาบ 0.05</text>
+<text x="120.000" y="288.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.60" fill="#111" text-anchor="middle" font-weight="bold">SECTION A—A   (หมุนรูเข้าแนวตัด)   SCALE 1:1</text>
+<line x1="295.000" y1="148.000" x2="365.000" y2="148.000" stroke="#111" stroke-width="0.50"/>
+<line x1="295.417" y1="148.000" x2="294.250" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="297.250" y1="148.000" x2="296.083" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="299.083" y1="148.000" x2="297.917" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="300.917" y1="148.000" x2="299.750" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="302.750" y1="148.000" x2="301.583" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="304.583" y1="148.000" x2="303.417" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="306.417" y1="148.000" x2="305.250" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="308.250" y1="148.000" x2="307.083" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="310.083" y1="148.000" x2="308.917" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="311.917" y1="148.000" x2="310.750" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="313.750" y1="148.000" x2="312.583" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="315.583" y1="148.000" x2="314.417" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="317.417" y1="148.000" x2="316.250" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="319.250" y1="148.000" x2="318.083" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="321.083" y1="148.000" x2="319.917" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="322.917" y1="148.000" x2="321.750" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="324.750" y1="148.000" x2="323.583" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="326.583" y1="148.000" x2="325.417" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="328.417" y1="148.000" x2="327.250" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="330.250" y1="148.000" x2="329.083" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="332.083" y1="148.000" x2="330.917" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="333.917" y1="148.000" x2="332.750" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="335.750" y1="148.000" x2="334.583" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="337.583" y1="148.000" x2="336.417" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="339.417" y1="148.000" x2="338.250" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="341.250" y1="148.000" x2="340.083" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="343.083" y1="148.000" x2="341.917" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="344.917" y1="148.000" x2="343.750" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="346.750" y1="148.000" x2="345.583" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="348.583" y1="148.000" x2="347.417" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="350.417" y1="148.000" x2="349.250" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="352.250" y1="148.000" x2="351.083" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="354.083" y1="148.000" x2="352.917" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="355.917" y1="148.000" x2="354.750" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="357.750" y1="148.000" x2="356.583" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="359.583" y1="148.000" x2="358.417" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="361.417" y1="148.000" x2="360.250" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<line x1="363.250" y1="148.000" x2="362.083" y2="149.167" stroke="#111" stroke-width="0.18"/>
+<rect x="325.000" y="52.167" width="10.000" height="95.833" fill="none" stroke="#111" stroke-width="0.50"/>
+<rect x="309.167" y="43.833" width="41.667" height="8.333" fill="none" stroke="#111" stroke-width="0.50"/>
+<line x1="330.000" y1="148.000" x2="330.000" y2="43.000" stroke="#111" stroke-width="0.18" stroke-dasharray="8 2 1.5 2"/>
+<polygon points="346.414,52.419 355.253,43.581 353.956,42.284 345.118,51.123" fill="#e8eef5" stroke="#111" stroke-width="0.50"/>
+<polygon points="346.443,52.390 353.514,59.461 362.294,50.681 355.223,43.610" fill="none" stroke="#8a8a8a" stroke-width="0.18" stroke-dasharray="6 2 1 2"/>
+<line x1="350.833" y1="48.000" x2="359.672" y2="56.839" stroke="#111" stroke-width="0.18" stroke-dasharray="8 2 1.5 2"/>
+<text x="359.967" y="57.133" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.40" fill="#111" text-anchor="middle" font-weight="normal">Z</text>
+<text x="344.646" y="54.187" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.40" fill="#111" text-anchor="middle" font-weight="bold">ARM A</text>
+<polygon points="304.747,43.581 313.586,52.419 314.882,51.123 306.044,42.284" fill="#e8eef5" stroke="#111" stroke-width="0.50"/>
+<polygon points="304.777,43.610 297.706,50.681 306.486,59.461 313.557,52.390" fill="none" stroke="#8a8a8a" stroke-width="0.18" stroke-dasharray="6 2 1 2"/>
+<line x1="309.167" y1="48.000" x2="300.328" y2="56.839" stroke="#111" stroke-width="0.18" stroke-dasharray="8 2 1.5 2"/>
+<text x="300.033" y="57.133" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.40" fill="#111" text-anchor="middle" font-weight="normal">Z</text>
+<text x="315.354" y="54.187" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.40" fill="#111" text-anchor="middle" font-weight="bold">ARM B</text>
+<line x1="309.167" y1="41.250" x2="309.167" y2="40.750" stroke="#111" stroke-width="0.18"/>
+<line x1="350.833" y1="41.250" x2="350.833" y2="40.750" stroke="#111" stroke-width="0.18"/>
+<line x1="309.167" y1="39.250" x2="350.833" y2="39.250" stroke="#111" stroke-width="0.18"/>
+<polygon points="309.167,39.250 311.767,38.800 311.767,39.700" fill="#111"/>
+<polygon points="350.833,39.250 348.233,39.700 348.233,38.800" fill="#111"/>
+<text x="330.000" y="38.050" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="middle" font-weight="normal">500  (mount.spacing)</text>
+<line x1="297.667" y1="148.000" x2="286.667" y2="148.000" stroke="#111" stroke-width="0.18"/>
+<line x1="297.667" y1="48.000" x2="286.667" y2="48.000" stroke="#111" stroke-width="0.18"/>
+<line x1="285.167" y1="148.000" x2="285.167" y2="48.000" stroke="#111" stroke-width="0.18"/>
+<polygon points="285.167,148.000 284.717,145.400 285.617,145.400" fill="#111"/>
+<polygon points="285.167,48.000 285.617,50.600 284.717,50.600" fill="#111"/>
+<text x="286.567" y="99.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="start" font-weight="normal">1200</text>
+<text x="376.833" y="68.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.40" fill="#111" text-anchor="start" font-weight="normal">tilt 135°</text>
+<text x="376.833" y="71.600" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.40" fill="#111" text-anchor="start" font-weight="normal">(45° จากแนวระดับ)</text>
+<text x="330.000" y="160.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.40" fill="#111" text-anchor="middle" font-weight="bold">ผังติดตั้ง (อ้างอิง)  SCALE 1:12</text>
+<text x="330.000" y="165.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.40" fill="#111" text-anchor="middle" font-weight="normal">เสา ⌀120 / คานขวาง ⌀100</text>
+<text x="250.000" y="176.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.60" fill="#111" text-anchor="start" font-weight="bold">NOTES</text>
+<text x="250.000" y="182.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.60" fill="#111" text-anchor="start" font-weight="normal">1.  หน่วย: มิลลิเมตร  |  เกณฑ์ทั่วไป ISO 2768-mK  |  ลบคม 0.5x45° ทุกขอบ</text>
+<text x="250.000" y="186.600" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.60" fill="#111" text-anchor="start" font-weight="normal">2.  วัสดุ: เหล็ก S45C หรือ SS400 หนา 22 (ทางเลือก AL6061-T6 ถ้าเน้นน้ำหนัก)</text>
+<text x="250.000" y="191.200" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.60" fill="#111" text-anchor="start" font-weight="normal">3.  หน้า A คือหน้าประกบฐานหุ่นยนต์: Ra 3.2, ระนาบ 0.05, ตั้งฉากกับรู ⌀8 H7 0.05</text>
+<text x="250.000" y="195.800" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.60" fill="#111" text-anchor="start" font-weight="normal">4.  แพทเทิร์น 4x M8 บน ⌀132 ที่ 45/135/225/315° วัดจาก base.dae ของ ur_description</text>
+<text x="250.000" y="200.400" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.60" fill="#111" text-anchor="start" font-weight="normal">5.  รูหมุด ⌀8 H7: เจาะโดย match-drill จากฐานหุ่นยนต์จริง หรือยืนยันกับคู่มือ UR ก่อน</text>
+<text x="250.000" y="205.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.60" fill="#111" text-anchor="start" font-weight="normal">6.  สลักยึดหุ่นยนต์: M8 class 12.9 x 4 ตัว, ขันตามค่าในคู่มือ UR (~20 N·m)</text>
+<text x="250.000" y="209.600" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.60" fill="#111" text-anchor="start" font-weight="normal">7.  จำนวน 2 ชิ้น (Arm A / Arm B) — ชิ้นเหมือนกัน ไม่ต้อง mirror</text>
+<text x="250.000" y="214.200" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.60" fill="#111" text-anchor="start" font-weight="normal">8.  ⌀150 / หนา 22 / ระยะ 500 / สูง 1200 / tilt 135° มาจาก config/cell.yaml — แก้ที่นั่นแล้ว gen แบบใหม่</text>
+<text x="250.000" y="218.800" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.60" fill="#111" text-anchor="start" font-weight="normal">9.  หลังติดตั้งจริง ให้วัดระยะหน้าแปลน-ต่อ-หน้าแปลนจริง แล้วใส่กลับใน arms.&lt;id&gt;.base</text>
+<rect x="250" y="234" width="160" height="55" fill="none" stroke="#111" stroke-width="0.7"/>
+<line x1="250.000" y1="248.000" x2="410.000" y2="248.000" stroke="#111" stroke-width="0.35"/>
+<line x1="250.000" y1="260.000" x2="410.000" y2="260.000" stroke="#111" stroke-width="0.35"/>
+<line x1="250.000" y1="272.000" x2="410.000" y2="272.000" stroke="#111" stroke-width="0.35"/>
+<line x1="250.000" y1="281.000" x2="410.000" y2="281.000" stroke="#111" stroke-width="0.35"/>
+<line x1="312.000" y1="248.000" x2="312.000" y2="289.000" stroke="#111" stroke-width="0.35"/>
+<line x1="360.000" y1="248.000" x2="360.000" y2="289.000" stroke="#111" stroke-width="0.35"/>
+<text x="254.000" y="241.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="4.60" fill="#111" text-anchor="start" font-weight="bold">MOUNT FLANGE — UR5 BASE</text>
+<text x="254.000" y="246.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.80" fill="#111" text-anchor="start" font-weight="normal">หน้าแปลนยึดหุ่นยนต์ (ปลายคานขวาง)</text>
+<text x="254.000" y="250.800" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.30" fill="#666" text-anchor="start" font-weight="normal">DWG NO.</text>
+<text x="254.000" y="255.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="start" font-weight="normal">UR5D-MP-01  REV A</text>
+<text x="316.000" y="250.800" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.30" fill="#666" text-anchor="start" font-weight="normal">MATERIAL</text>
+<text x="316.000" y="255.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="start" font-weight="normal">S45C t22</text>
+<text x="364.000" y="250.800" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.30" fill="#666" text-anchor="start" font-weight="normal">QTY</text>
+<text x="364.000" y="255.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="start" font-weight="normal">2</text>
+<text x="254.000" y="262.800" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.30" fill="#666" text-anchor="start" font-weight="normal">PROJECT</text>
+<text x="254.000" y="267.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="start" font-weight="normal">dual-UR5 cell</text>
+<text x="316.000" y="262.800" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.30" fill="#666" text-anchor="start" font-weight="normal">SCALE</text>
+<text x="316.000" y="267.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="start" font-weight="normal">1:1 (A3)</text>
+<text x="364.000" y="262.800" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.30" fill="#666" text-anchor="start" font-weight="normal">UNITS</text>
+<text x="364.000" y="267.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="start" font-weight="normal">mm</text>
+<text x="254.000" y="273.800" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.30" fill="#666" text-anchor="start" font-weight="normal">SOURCE</text>
+<text x="254.000" y="278.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="start" font-weight="normal">config/cell.yaml</text>
+<text x="316.000" y="273.800" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.30" fill="#666" text-anchor="start" font-weight="normal">PROJECTION</text>
+<text x="316.000" y="278.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="start" font-weight="normal">1st angle</text>
+<text x="364.000" y="273.800" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.30" fill="#666" text-anchor="start" font-weight="normal">MASS</text>
+<text x="364.000" y="278.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="3.20" fill="#111" text-anchor="start" font-weight="normal">~2.6 kg</text>
+<text x="254.000" y="286.000" font-family="'Noto Sans Thai','Loma','DejaVu Sans',sans-serif" font-size="2.50" fill="#666" text-anchor="start" font-weight="normal">ตัวเลขทุกตัวสร้างจาก config/cell.yaml — อย่าแก้ในไฟล์ SVG</text>
+</svg>

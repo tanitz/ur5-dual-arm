@@ -40,6 +40,19 @@ import time
 SIM_VIEW_HOST = "127.0.0.1"
 SIM_VIEW_PORT = 30099
 
+# The same frames again, on a second port, for a reader that is not the
+# viewer — a recording tool, a bench check, anything that wants to watch the
+# cell while the panel drives it.
+#
+# A second port rather than a second listener on the first, because two
+# listeners is not what it looks like: Linux allows the duplicate bind (both
+# sockets set SO_REUSEADDR) and then delivers every datagram to whichever
+# bound last, leaving the other with silence. The viewer reads silence as "no
+# control panel is running" and answers it by opening its own feed to each
+# robot — which is the second client on port 30003 this whole channel exists
+# to prevent, arrived at by a program that only wanted to look.
+SIM_VIEW_TAP_PORT = 30100
+
 # Past this with no datagram, the viewer stops believing the simulation and
 # goes back to the arms. Four servo cycles at 125 Hz would be too tight for a
 # GUI that pauses to repaint; half a second is short enough that letting go of
@@ -57,8 +70,12 @@ class SimViewSender:
     cannot disturb the loop that is driving two robots.
     """
 
-    def __init__(self, host=SIM_VIEW_HOST, port=SIM_VIEW_PORT):
+    def __init__(self, host=SIM_VIEW_HOST, port=SIM_VIEW_PORT,
+                 tap_port=SIM_VIEW_TAP_PORT):
         self.addr = (host, port)
+        # every extra address is one more non-blocking sendto on loopback per
+        # cycle, which at 125 Hz is nothing worth a switch to turn off
+        self.addrs = [self.addr] + ([(host, tap_port)] if tap_port else [])
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setblocking(False)
         self.sent = 0
@@ -70,22 +87,28 @@ class SimViewSender:
                    if q is not None and len(q) == ARM_JOINT_COUNT}
         if not payload and mode not in ("sim", "real"):
             return False
-        try:
-            # Stamped by the sender, not by whoever reads it. Freshness has to
-            # mean "this is what the cell is doing now", and a receiver that
-            # timed its own reads would call a backlog fresh — draining two
-            # seconds of queued frames after the panel had already closed, and
-            # drawing every one of them as current.
-            self.sock.sendto(
-                json.dumps({"t": time.time(), "joints": payload,
+        # Stamped by the sender, not by whoever reads it. Freshness has to
+        # mean "this is what the cell is doing now", and a receiver that
+        # timed its own reads would call a backlog fresh — draining two
+        # seconds of queued frames after the panel had already closed, and
+        # drawing every one of them as current.
+        frame = json.dumps({"t": time.time(), "joints": payload,
                             "moving": bool(moving), "mode": mode,
-                            "lease": max(0.0, float(lease))}).encode(),
-                self.addr)
+                            "lease": max(0.0, float(lease))}).encode()
+        # The viewer's port is the one that decides the answer: a tap nobody is
+        # listening to must not be able to report a failure, and a tap that
+        # breaks must not be able to hide one.
+        delivered = False
+        for i, addr in enumerate(self.addrs):
+            try:
+                self.sock.sendto(frame, addr)
+                delivered = delivered or i == 0
+            except OSError:
+                if i == 0:
+                    self.failures += 1
+        if delivered:
             self.sent += 1
-            return True
-        except OSError:
-            self.failures += 1
-            return False
+        return delivered
 
     def close(self):
         try:

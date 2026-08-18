@@ -24,16 +24,16 @@ arms:
     enabled: true
     ur_type: ur5
     base:
-      xyz: [0.0, 0.24, 1.2]
-      rpy: [-2.35619449, 0.0, 0.0]
+      xyz: [-0.109103, 0.248578, 1.196723]
+      rpy: [-2.34901131, -0.09097909, -0.00032699]
   B:
     label: Arm B
     ip: 192.168.250.30
     enabled: true
     ur_type: ur5
     base:
-      xyz: [-0.021006, -0.262333, 1.196767]
-      rpy: [2.35682398, -0.00979761, -0.08937293]
+      xyz: [-0.108946, -0.248578, 1.193289]
+      rpy: [2.36337767, -0.09097909, -0.00032699]
 mount: {style: custom, column_height: 1.2, spacing: 0.48, tilt_deg: 135.0, tilt_deg_A: null,
   tilt_deg_B: null, rotate_deg_A: 0.0, rotate_deg_B: 0.0, yaw_deg: 0.0, show_frame: true,
   column_radius: 0.06, crossbar_radius: 0.05, pad_radius: 0.075, pad_thickness: 0.022,
@@ -42,5 +42,5 @@ motion: {backend: urscript, control: joint, allow_uncalibrated_real: true, servo
   servo_lookahead: 0.1, servo_gain: 300.0, servo_accel: 1.2, servo_speed: 0.5, max_force_rise: 100.0,
   max_tcp_force: 400.0, max_pair_drift: 0.004}
 calibrated: false
-translation_calibrated: true
+translation_calibrated: false
 limits: {jog_lin_max: 0.25, jog_ang_max: 1.0, object_lin_speed: 0.05, object_ang_speed: 0.3}

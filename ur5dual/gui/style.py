@@ -12,6 +12,10 @@ from PyQt5.QtWidgets import QLabel, QPushButton
 
 UI_SCALE = float(os.environ.get("UR5DUAL_UI_SCALE", 1.0))
 
+# The size every number in the panels is quoted in. sx(46) is 46 px here and
+# grows or shrinks with UI_SCALE everywhere else.
+DESIGN_W, DESIGN_H = 1280, 800
+
 # arm identity carries a colour the whole app agrees on, so a number on the
 # monitor and a button in the jog grid are obviously the same arm
 ARM_COLOR = {"A": "#1a5fa8", "B": "#8a4a1a"}
@@ -29,6 +33,19 @@ def set_scale(f):
     global UI_SCALE
     UI_SCALE = max(0.4, min(2.0, float(f)))
     return UI_SCALE
+
+
+def fit_to(width, height):
+    """Shrink the design until it fits a screen this size — never stretch it.
+
+    The panel screen is 1280x800 across ten inches, so a pixel here is already
+    a sixth of a millimetre and a touch target that has been scaled down to fit
+    is a touch target that gets missed. This only ever takes the last few
+    percent off, to pay for whatever the desktop keeps for its own dock and
+    title bar; a screen with room to spare stays at 1.0 and the width it has
+    over goes to the tabs.
+    """
+    return set_scale(min(1.0, width / float(DESIGN_W), height / float(DESIGN_H)))
 
 
 def sx(n):

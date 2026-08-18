@@ -23,6 +23,7 @@ different fixes:
     python3 tests/check_up_online.py --apply    # and write the correction
 """
 
+import math
 import sys
 sys.path.insert(0, "/home/jetson/UR5")
 import numpy as np
@@ -31,7 +32,8 @@ from ur5dual.cell import Cell
 from ur5dual.config import CellConfig
 
 np.set_printoptions(precision=3, suppress=True)
-apply = "--apply" in sys.argv
+tipped = "--apply-tipped" in sys.argv
+apply = tipped or "--apply" in sys.argv
 
 cell = Cell(CellConfig.load()); cell.listeners.append(lambda t: print("   .", t))
 cell.connect(("A", "B"))
@@ -60,6 +62,18 @@ print("  the other way up and the sign in arm.up_in_base needs flipping —")
 print("  say so and nothing else in the reading changes.")
 
 print()
+print("the same reading, if instead the mast is plumb and the brackets are not")
+for a in r["arms"]:
+    tilt, spin = r["bracket_fit"][a]
+    print("  arm %s  mount.tilt_deg_%s %6.2f   mount.rotate_deg_%s %+6.2f"
+          % (a, a, tilt, a, spin))
+print("  Gravity fixes two of the three angles each base has, and those two")
+print("  numbers spend them on this arm's own bracket instead of on the world.")
+print("  It fits the measurement exactly as well as the correction below does.")
+print("  Note what each keeps: one shared rotation leaves the A-to-B transform")
+print("  the touch-off measured untouched, per-arm bracket numbers rewrite it.")
+
+print()
 if r["pair_error_deg"] is None:
     print("pair error   — (needs both arms)")
 else:
@@ -79,21 +93,61 @@ print("so a +Z jog today lifts the object along a line %.1f deg off vertical, "
       % r["world_error_deg"])
 print("and +X and +Y are tipped out of horizontal by the same amount.")
 
+# Applying is a claim about the building, so print the claim in millimetres a
+# plumb line can check. Applied to a cell whose mast is in fact upright, the
+# correction levels the world onto whatever the brackets and the sensor are
+# doing, and every world jog afterwards carries that error instead.
+lean = -np.array(r["measured_up_world"], dtype=float)[:2]
+if np.linalg.norm(lean) > 1e-9:
+    lean = lean / np.linalg.norm(lean) * math.sin(
+        math.radians(r["world_error_deg"])) * float(cell.config.mount["column_height"])
+    print()
+    print("--apply-tipped would claim the mast is out of plumb by %.2f deg,"
+          % r["world_error_deg"])
+    print("its top standing %s mm from the plumb line through its foot in"
+          % np.round(lean * 1000.0, 0))
+    print("world XY, and would move both flanges there. Put a level on the")
+    print("mast before choosing that one. On a mast that is plumb, --apply")
+    print("turns the brackets instead and leaves the flanges alone.")
+
 if not apply:
     print()
-    print("nothing was changed. re-run with --apply to write the correction")
+    print("nothing was changed. re-run with --apply (plumb mast, turn the "
+          "brackets)")
+    print("or --apply-tipped (the mast itself is out of plumb, turn the cell)")
     cell.disconnect()
     raise SystemExit(0)
 
 cfg = cell.config
-before = {a: cfg.arms[a].rpy.copy() for a in ("A", "B")}
-C.apply_level(cfg, r)
+before = {a: cfg.arms[a].base_matrix() for a in ("A", "B")}
+a_to_b_before = cfg.a_to_b()
+C.apply_level(cfg, r, tipped=tipped)
 cfg.save()
 print()
-print("applied — both arms turned by the same %.2f deg, so the transform "
-      "between them is untouched" % r["world_error_deg"])
+print("applied — both arms turned by the same %.2f deg, about %s"
+      % (r["world_error_deg"],
+         "the cell's foot: the flanges moved with them"
+         if tipped else "their own flanges, which have not moved"))
 for a in ("A", "B"):
     print("  arm %s rpy %s -> %s deg"
-          % (a, np.degrees(before[a]), np.degrees(cfg.arms[a].rpy)))
+          % (a, np.degrees(C.mat_to_rpy(before[a][:3, :3])),
+             np.degrees(cfg.arms[a].rpy)))
+    if tipped:
+        print("         xyz %s -> %s m" % (before[a][:3, 3], cfg.arms[a].xyz))
+
+# The pair is what two-arm work is built on, so say what happened to it either
+# way rather than leaving it to be discovered by a workpiece being pulled out
+# of a gripper.
+drift = np.linalg.norm(cfg.a_to_b()[:3, 3] - a_to_b_before[:3, 3]) * 1000.0
+print()
+if drift < 1e-6:
+    print("the A-to-B transform is untouched, translation included")
+else:
+    print("arm B now sits %.1f mm from where arm A had it — turning the "
+          "brackets in place" % drift)
+    print("moves the pair unless the twist is exactly about the crossbar. "
+          "Re-run the touch-off")
+    print("if this cell is calibrated for two-arm work (it says calibrated=%s)."
+          % cfg.calibrated)
 print("saved to %s" % cfg.path)
 cell.disconnect()

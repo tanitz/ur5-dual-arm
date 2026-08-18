@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# What the measured flange gaps say about where arm B really stands.
+cd "$(dirname "$(readlink -f "$0")")/.." && exec python3 -m ur5dual.tools.flange_fit "$@"

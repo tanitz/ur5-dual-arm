@@ -47,17 +47,20 @@ feature.
 
 ## The panel
 
-Two halves at 1280x800, the shape of a teach pendant.
+Two working halves at 1280x800, the shape of a teach pendant. The REAL cell
+bar belongs to the right-hand tab column rather than spanning the program.
 
 ```
 ┌──────────────────────────┬──────────────────────────────┐
-│ Program — teach & run    │ [Points][Vars][Object][Jog]  │
-│   # step detail          │                              │
-│   ...                    │ Jog:  Mode / Cell / STOP     │
-│ [▲][▼][Delete][On/off]   │       arm A, arm B, pair     │  6 rows
-│ [▶ Run][⏸][■ Stop]       │       Messages               │  of −/+
+│ Program — teach & run    │ REAL|A|B|Power|Brake|Unlock|STOP
+│   # step detail          │ [Points][Vars][Object][Jog]  │
+│   ...                    │ Arm A | A+B | Arm B          │  6 rows
+│ [▲][▼][Delete][On/off]   │ X Y Z RX RY RZ, each with −/+│
+│ [▶ Run][⏸][■ Stop]       │                              │
 │ [Save][Load][Loop][Dry]  │                              │
-└──────────────────────────┴──────────────────────────────┘
+├──────────────────────────┴──────────────────────────────┤
+│ Messages: newest line                         [Expand]  │
+└─────────────────────────────────────────────────────────┘
 ```
 
 The left half is the program and never changes: it is the document being
@@ -66,28 +69,44 @@ to build it — the named places (`Points`), the cell's own numbers and the
 touch-off (`Vars`), taking hold and driving what is held (`Object`), and the
 jog grid.
 
-The cell itself — SIM/REAL, connect, STOP, both arms' readouts, the pair
-numbers, the message log — runs down the left of the `Jog` tab. Jogging is
-where an operator stands and watches, so the state sits beside the buttons
-that change it. The cost is that STOP is one tab away from the other three;
-the program's own `■ Stop` is on the left half at all times, and stops a
-running program wherever you are.
+1280x800 is the size every number in the layout is quoted in, not a size the
+screen has to be. On startup the panel measures the desktop's work area — what
+is left after its dock and the window's own title bar — and scales the whole
+design down to fit, never up. On this cell's 10" panel that leaves 1232x736
+and comes out at 0.92; `--fullscreen` has no frame to pay for and gets the
+design size back at 1.0, which is the largest the touch targets ever are.
+`--scale` overrides both.
+
+The fixed REAL indicator, connection and dashboard controls, and the cell-wide
+STOP stay in one row above the tabs. The newest message stays in a one-line
+drawer at the bottom; `Expand` opens its history. Compact A/B TCP and force
+readouts plus the pair gap sit below the Jog keys, and `Details` opens the full
+XYZ, RX/RY/RZ, J1–J6, force, robot/safety state, TCP gap, drift, and holding
+state in a separate window.
 
 ## Jogging by hand
 
-The Jog tab drives arms, not objects, and offers three targets:
+The Jog tab drives arms, not objects. Arm A, synchronized A+B, and arm B are
+three permanent columns; there is no Drive selector:
 
 | Drive | What a press does |
 |---|---|
 | `Arm A` / `Arm B` | one arm, in the cell frame, that arm's base, its tool, or a joint at a time |
 | `Synchronized A+B` | the same cell-frame direction to both arms at once |
 
+All six axes are visible at once: X/Y/Z and RX/RY/RZ. In joint mode the same
+rows become J1 through J6. A and B can use world, base, tool, or joint frames;
+the A+B column is enabled only in world frame.
+
 `Synchronized A+B` is the single-arm world jog issued twice, once per arm,
 each direction resolved through that arm's own mounting transform. Two arms
 given the same world direction travel the same way at the same speed, so a
 workpiece gripped between them is carried — the pairing is in the geometry, not
-in any attempt to keep two commands in step. It needs nothing but two arms that
-are connected and out of stop: no ATTACH, no servo loop, no calibration.
+in any attempt to keep two commands in step. REAL A+B therefore requires the
+relative base directions to have been measured (`translation_calibrated`); run
+`python3 tests/check_directions_online.py --apply` and restart the panel. SIM
+does not require that hardware measurement. ATTACH and the servo loop are not
+needed for this direct translation jog.
 
 What it does not do is turn the pair as one body. RX/RY/RZ turn each wrist
 about that world axis through its *own* tool, so a rigid workpiece across both
@@ -102,30 +121,18 @@ servo loop for the same two controllers.
 scripts/ur5dual-gui           # the control panel
 scripts/ur5dual-rviz          # 3D view of the cell, read-only (see below)
 scripts/ur5dual-jog --arm A   # terminal jog for one arm, for ssh sessions
+scripts/ur5dual-flange-log    # record a measured flange gap against both poses
+scripts/ur5dual-flange-fit    # what those gaps say about where arm B stands
 python3 tests/test_*.py       # the maths, no robot needed
 python3 tests/check_chain_online.py   # read-only: does our FK match the arms?
 ```
 
-## Two modes
+## REAL-only panel
 
-The control panel opens in **SIM** and has to be told to leave it.
-
-| | |
-|---|---|
-| `SIM` | Object moves drive the model in RViz. The arms hold station and are never sent a target. |
-| `REAL` | The same moves drive both arms. |
-
-Only the last step differs. Sim runs the same 125 Hz loop, the same closed-chain
-solve, the same guards and the same jog ramp, and swaps the write to the
-controller for a datagram to the viewer — so what you watch is what would have
-been sent, not a separate model of it. That also makes sim the place to find
-out that a rotation runs an arm out of reach, because the pre-move check is the
-one the real loop uses.
-
-Sim does not require a calibrated cell. An unmeasured cell drawn moving is more
-useful than a refusal: two arms visibly pulling in different directions is what
-a wrong base transform looks like, and it costs nothing to look at it before
-the touch-off rather than after.
+The control panel now starts directly in REAL, announces that state with a
+fixed red indicator, and attempts to connect both arms. There is no mode
+selector. The simulated cell remains available to the automated geometry and
+GUI tests, but it is not an operator mode in the panel.
 
 `scripts/ur5dual-rviz` draws whichever is happening. It never waits for a
 robot — every joint starts at zero, which reads as "no reading" rather than as
@@ -158,7 +165,9 @@ ur5dual/
     kinematics.py      poses, transforms, the one rotation convention
     ur_kinematics.py   UR5 FK, Jacobian and IK in Python
     closed_chain.py    both arms + the box as one chain: joints from a box pose
-    calibration.py     touch-off solver for the real base-to-base transform
+    world.py           joints <-> Cartesian in the cell frame, for either arm
+    calibration.py     touch-off, hand-taught directions, and flange pairing —
+                       three ways to measure the real base-to-base transform
   robot/             one arm, and how bytes reach it
     transport/         one module per robot interface
       dashboard.py       29999  power, brakes, safety state
@@ -180,7 +189,9 @@ ur5dual/
   tools/             standalone entry points; the panel never imports these
     jog_cli.py         terminal jog for one arm
     midpoint_hold.py   two arms holding one midpoint, without the panel
-config/              cell.yaml, points.json, programs/
+    flange_log.py      a measured flange gap, with the pose it was measured in
+    flange_fit.py      those gaps against cell.yaml: report, correct, or fit
+config/              cell.yaml, points.json, flange_log.json, programs/
 scripts/             entry points
 tests/               geometry, coupling, calibration, program validation
 ros2_ws/             ur_description, built here because apt needs root
@@ -218,6 +229,13 @@ to draw the cell and to catch gross reach errors.
 hangs it upside down. The frame is drawn as round tube with a mounting pad at
 each crossbar end carrying the *same* rpy as the arm base — so a base floating
 clear of its pad in RViz is a tilt that is wrong, not a drawing that is rough.
+
+The tube itself hangs off those two flanges rather than off `world`: the
+crossbar is drawn between the two base origins and the mast square to it, down
+the axis the brackets are tilted away from. So a calibration that turns both
+bases — levelling the cell against gravity does exactly that — carries the
+structure with it, instead of leaving a bolt-upright mast with the arms
+leaning off the ends of it.
 
 It is **not** good enough for two-arm grasping unless the values came from the
 as-built cell. Drawing numbers can be out by a few millimetres, and between two
