@@ -138,6 +138,74 @@ DEFAULTS = {
         "object_lin_speed": 0.05,   # m/s   default for MOVE_OBJ
         "object_ang_speed": 0.30,   # rad/s default for ROTATE_OBJ
     },
+    # Which edge the icon rail and its sidebar sit on, and which panel is open
+    # behind the rail. Handedness is not a per-session preference — an operator
+    # who moved the jog keys to the other side wants them there tomorrow.
+    # The Camera tab finds the four edges of one known open box in colour,
+    # solves its 6D pose, then rejects and smooths unstable frame-to-frame
+    # answers. ROI and dimensions match the open-box pose diagnostic tool.
+    "vision": {
+        "source": "sim",            # sim | realsense
+        "width": 640,
+        "height": 480,
+        "fps": 30,
+        "serial": None,
+        "warmup": 15,
+        "sim_plane_z": 1.20,        # keep a 600x400 mm opening inside VGA
+        # Also test small pale faces and let depth select a standard size.
+        # Kept off by default for cells that deliberately track one fixed box.
+        "auto_size": False,
+        "box_size": [0.60, 0.40, 0.20],  # opening long, short, depth (m)
+        # The openings typed into the Camera tab before, newest first, so a
+        # cell that alternates between two crates picks the second one off a
+        # list instead of dialling it back in. Long and short only: the wall
+        # depth belongs to the stock rather than to the box under the lens,
+        # and stays in `box_size`.
+        "box_sizes": [],                 # recent [long, short, height] (m)
+        "roi": None,                     # a search window; None = whole frame
+        "smoothing": 0.20,
+        "max_reprojection": 4.0,         # px
+        "max_corner_jump": 35.0,         # px
+        "confirm_frames": 4,
+        "hold_frames": 15,
+        # A CSV per Camera session is for tuning the filter, not for running
+        # the cell: it writes a row a frame, so a shift's worth is tens of
+        # megabytes nobody reads. Off unless someone is measuring.
+        "log_enabled": False,
+        "log_dir": "logs",
+        "period": 0.0,              # s between passes; 0 is as fast as it can
+        # Where the lens is, in the cell's world frame — the same xyz + rpy an
+        # arm base is written in. Until it is measured this is the identity,
+        # which puts every detection in the camera's own frame and is wrong in
+        # a way a reach check will catch rather than a way an arm will find.
+        "camera_to_world": {"xyz": [0.0, 0.0, 0.0],
+                            "rpy": [0.0, 0.0, 0.0]},
+        "calibrated": False,
+        # A box that always lies flat, the same way up, at the same height on
+        # the same surface has three degrees of freedom, and this file holds
+        # the map that reads them: pixels onto that surface, plus the places
+        # picks were taught against. It lives outside this file because it is
+        # measured rather than chosen — see `vision/planar.py`. When it holds
+        # a map, FIND reads three numbers through it instead of six through
+        # `camera_to_world`, and needs no camera placement at all.
+        "plane_file": "config/plane.json",
+        # How far a camera is allowed to move a taught pick. A detection is a
+        # pose nobody taught and this cell has no arm-to-arm collision check,
+        # so a correction bigger than the box could plausibly have shifted is
+        # a misdetection, not a discovery.
+        "max_correction": 0.10,       # m
+        "max_correction_deg": 30.0,
+    },
+    "ui": {
+        "sidebar_side": "right",    # right | left
+        "sidebar_panel": "jog",     # points | vars | object | jog
+        "sidebar_open": True,
+        # Maximised, not fullscreen: the desktop's own dock and top bar stay
+        # reachable, which is how this panel is actually used — the operator
+        # switches to a terminal and back. Fullscreen is one press of the
+        # rail's ⬚ away and stays that way.
+        "fullscreen": False,
+    },
 }
 
 HEADER = """\
@@ -155,6 +223,16 @@ HEADER = """\
 # mount.show_frame only decides whether RViz draws the mast and crossbar. It
 # is deliberately independent of style, so a calibrated (custom) cell still
 # shows the structure it is bolted to. Set it false for a cell with no mast.
+#
+# ui.sidebar_side puts the icon rail and its panel on the right or the left
+# edge. The rail itself is never hidden, so the way back from a closed sidebar
+# is always on screen; only the panel beside it opens and closes.
+#
+# ui.fullscreen decides whether the panel takes the whole screen or runs in a
+# maximised window with the desktop's dock, top bar and title bar still around
+# it. False is the default: this panel shares its screen with the desktop it is
+# started from. The rail's ⬚ button toggles it (F11 does too) and writes the
+# answer back here; --fullscreen and --windowed override it for one run.
 #
 # motion.backend picks how the 125 Hz coordinated loop talks to the robots:
 #   rtde      ur_rtde servoL/servoJ  (default)
@@ -240,6 +318,43 @@ class CellConfig:
         with open(path, "w") as f:
             f.write(HEADER)
             yaml.safe_dump(self._d, f, sort_keys=False, default_flow_style=None)
+        return path
+
+    def save_ui(self, path=None):
+        """Write back only the layout preference.
+
+        Pressing the side swap must not also commit whatever the Vars tab has
+        unsaved in memory — a layout button that quietly writes mounting
+        geometry is a layout button nobody can trust. So the file is re-read,
+        its `ui` block replaced, and every other key written back exactly as it
+        was found, including the ones it never had.
+        """
+        path = path or self.path
+        try:
+            with open(path) as f:
+                on_disk = yaml.safe_load(f) or {}
+        except FileNotFoundError:
+            on_disk = {}
+        on_disk["ui"] = copy.deepcopy(self._d["ui"])
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            f.write(HEADER)
+            yaml.safe_dump(on_disk, f, sort_keys=False, default_flow_style=None)
+        return path
+
+    def save_vision(self, path=None):
+        """Write back only camera settings, preserving unrelated cell data."""
+        path = path or self.path
+        try:
+            with open(path) as f:
+                on_disk = yaml.safe_load(f) or {}
+        except FileNotFoundError:
+            on_disk = {}
+        on_disk["vision"] = copy.deepcopy(self._d["vision"])
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            f.write(HEADER)
+            yaml.safe_dump(on_disk, f, sort_keys=False, default_flow_style=None)
         return path
 
     # -- convenience -------------------------------------------------------
@@ -394,6 +509,14 @@ class CellConfig:
     @property
     def limits(self):
         return self._d["limits"]
+
+    @property
+    def ui(self):
+        return self._d["ui"]
+
+    @property
+    def vision(self):
+        return self._d["vision"]
 
     def enabled_arms(self):
         return [a for a in ARM_IDS if self.arms[a].enabled]

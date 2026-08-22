@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Standalone open-box pose diagnostics (image, PCD, demo, or RealSense).
+
+cd "$(dirname "$(readlink -f "$0")")/.." && \
+    exec python3 -m ur5dual.tools.open_box_pose "$@"

@@ -152,6 +152,12 @@ class SimMotion:
     def set_digital_out(self, n, on):
         self.arm.digital_out[int(n)] = bool(on)
 
+    def set_digital_in(self, n, on):
+        """Only a simulated arm has this: a real one is told by its wiring."""
+        bit = 1 << int(n)
+        self.arm.digital_in = (self.arm.digital_in | bit) if on else (
+            self.arm.digital_in & ~bit)
+
     def freedrive_on(self):
         # Nothing to release: there is no weight on a simulated arm and nobody
         # can push it. Recorded so the panel's checks see a consistent state
@@ -179,6 +185,10 @@ class SimArm:
         # a number from a robot that is not here.
         self.tcp_offset = np.zeros(6)
         self.digital_out = {}
+        # Inputs a simulated cell can be told about. A real controller reports
+        # them in its state packet; without somewhere to put them, WAIT_IN and
+        # IF-on-input could only ever be tried against hardware.
+        self.digital_in = 0
         self.freedrive = False
 
         self._lock = threading.RLock()
@@ -251,7 +261,7 @@ class SimArm:
             "tcp_force": np.zeros(6),
             "robot_mode": 7.0,           # RUNNING
             "safety_mode": 1.0,          # NORMAL
-            "digital_in_bits": 0,
+            "digital_in_bits": int(self.digital_in),
             "motor_temp": np.zeros(6),
             "tool_accel": self._tool_accel(q),
             "time": time.monotonic(),
@@ -298,6 +308,17 @@ class SimArm:
 
     def up_in_base(self):
         return self.base_matrix()[:3, :3].T @ np.array([0.0, 0.0, 1.0])
+
+    # -- commands, in world coordinates ------------------------------------
+    # The same two entry points `Arm` offers, and the reason a program can be
+    # run without robots: the executor speaks world, and until these existed
+    # the "same surface as Arm" claim above stopped short of the two calls a
+    # program step actually makes.
+    def movel_world(self, pose_world, vel=None, acc=None):
+        self.motion.movel_pose(self.world_to_base(pose_world), vel=vel, acc=acc)
+
+    def movej_world(self, pose_world, vel=None, acc=None):
+        self.motion.movej_pose(self.world_to_base(pose_world), vel=vel, acc=acc)
 
     # -- being driven ------------------------------------------------------
     def set_joints(self, q):

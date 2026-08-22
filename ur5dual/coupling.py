@@ -346,6 +346,7 @@ class Coordinator:
         self._thread = None
         self._running = False
         self._abort = False
+        self._frozen_at = None        # monotonic time a hold began, or None
         self.drift = 0.0
         self.force_baseline = None
         self.uncalibrated_real = False
@@ -362,6 +363,7 @@ class Coordinator:
         self._jog = None
         self.error = None
         self._abort = False
+        self._frozen_at = None
         self._drift_strikes = 0
         # what each arm reads while holding the object but not yet driving it;
         # everything the force guard cares about is measured from here
@@ -546,8 +548,38 @@ class Coordinator:
 
     def abort(self):
         self._abort = True
+        self._frozen_at = None
         with self._lock:
             self._jog = None
+
+    # -- holding a move half way through -----------------------------------
+    def freeze(self):
+        """Stand a planned move still without coming out of the servo loop.
+
+        The feed samples the plan against the wall clock, so holding it is a
+        matter of moving the clock rather than the box: while frozen, the
+        plan's start slides forward by exactly the time that passes, `s` does
+        not advance, and every cycle re-sends the pose it last sent. The loop
+        stays up at 125 Hz with all of its guards live, which is the whole
+        reason to hold a coupled carry this way — halting the arms instead
+        would drop two controllers out from under a box they are both holding,
+        and there would be no plan left to resume onto.
+
+        Only a planned move is held. A jog is a button someone is holding
+        down, and it ends when they let go.
+        """
+        with self._lock:
+            if self._frozen_at is None:
+                self._frozen_at = time.monotonic()
+
+    def thaw(self):
+        """Carry on along the same path, from wherever `freeze` stood it."""
+        with self._lock:
+            self._frozen_at = None
+
+    @property
+    def frozen(self):
+        return self._frozen_at is not None
 
     def __enter__(self):
         return self
@@ -574,6 +606,13 @@ class Coordinator:
             try:
                 now = time.monotonic()
                 with self._lock:
+                    if self._frozen_at is not None and self._plan is not None:
+                        # push the start forward by the time that just passed,
+                        # so `now - t0` — and therefore `s` — stands still
+                        pose_at, duration, t0 = self._plan
+                        self._plan = (pose_at, duration,
+                                      t0 + (now - self._frozen_at))
+                        self._frozen_at = now
                     plan = self._plan
                     jog = self._jog
                     hold = self._hold
@@ -838,12 +877,17 @@ class Coordinator:
 
     def wait_done(self, timeout=120.0):
         deadline = time.monotonic() + timeout
+        last = time.monotonic()
         while self.busy():
+            now = time.monotonic()
+            if self._frozen_at is not None:
+                deadline += now - last     # time spent held is not lateness
+            last = now
             if self.error is not None:
                 raise CouplingError(str(self.error))
             if self._abort:
                 raise CouplingError("aborted")
-            if time.monotonic() > deadline:
+            if now > deadline:
                 raise CouplingError("coordinated move did not finish in time")
             time.sleep(0.005)
         if self.error is not None:

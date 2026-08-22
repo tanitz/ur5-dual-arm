@@ -1,0 +1,305 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1360" height="1050" viewBox="0 0 1360 1050">
+<title>Panel layout 0 — Today, with two columns added</title>
+<defs><clipPath id="c1"><rect x="50.0" y="163.0" width="346.0" height="17.0"/></clipPath><clipPath id="c2"><rect x="78.0" y="201.0" width="60.0" height="21.0"/></clipPath><clipPath id="c3"><rect x="140.0" y="201.0" width="81.0" height="21.0"/></clipPath><clipPath id="c4"><rect x="225.0" y="201.0" width="81.0" height="21.0"/></clipPath><clipPath id="c5"><rect x="310.0" y="201.0" width="86.0" height="21.0"/></clipPath><clipPath id="c6"><rect x="78.0" y="222.0" width="60.0" height="21.0"/></clipPath><clipPath id="c7"><rect x="140.0" y="222.0" width="81.0" height="21.0"/></clipPath><clipPath id="c8"><rect x="225.0" y="222.0" width="81.0" height="21.0"/></clipPath><clipPath id="c9"><rect x="310.0" y="222.0" width="86.0" height="21.0"/></clipPath><clipPath id="c10"><rect x="78.0" y="243.0" width="60.0" height="21.0"/></clipPath><clipPath id="c11"><rect x="140.0" y="243.0" width="81.0" height="21.0"/></clipPath><clipPath id="c12"><rect x="225.0" y="243.0" width="81.0" height="21.0"/></clipPath><clipPath id="c13"><rect x="310.0" y="243.0" width="86.0" height="21.0"/></clipPath><clipPath id="c14"><rect x="78.0" y="264.0" width="60.0" height="21.0"/></clipPath><clipPath id="c15"><rect x="140.0" y="264.0" width="81.0" height="21.0"/></clipPath><clipPath id="c16"><rect x="225.0" y="264.0" width="81.0" height="21.0"/></clipPath><clipPath id="c17"><rect x="310.0" y="264.0" width="86.0" height="21.0"/></clipPath><clipPath id="c18"><rect x="78.0" y="285.0" width="60.0" height="21.0"/></clipPath><clipPath id="c19"><rect x="140.0" y="285.0" width="166.0" height="21.0"/></clipPath><clipPath id="c20"><rect x="310.0" y="285.0" width="86.0" height="21.0"/></clipPath><clipPath id="c21"><rect x="78.0" y="306.0" width="60.0" height="21.0"/></clipPath><clipPath id="c22"><rect x="140.0" y="306.0" width="166.0" height="21.0"/></clipPath><clipPath id="c23"><rect x="78.0" y="327.0" width="60.0" height="21.0"/></clipPath><clipPath id="c24"><rect x="140.0" y="327.0" width="166.0" height="21.0"/></clipPath><clipPath id="c25"><rect x="310.0" y="327.0" width="86.0" height="21.0"/></clipPath><clipPath id="c26"><rect x="78.0" y="348.0" width="60.0" height="21.0"/></clipPath><clipPath id="c27"><rect x="140.0" y="348.0" width="166.0" height="21.0"/></clipPath><clipPath id="c28"><rect x="310.0" y="348.0" width="86.0" height="21.0"/></clipPath><clipPath id="c29"><rect x="78.0" y="369.0" width="60.0" height="21.0"/></clipPath><clipPath id="c30"><rect x="140.0" y="369.0" width="166.0" height="21.0"/></clipPath><clipPath id="c31"><rect x="78.0" y="390.0" width="60.0" height="21.0"/></clipPath><clipPath id="c32"><rect x="140.0" y="390.0" width="81.0" height="21.0"/></clipPath><clipPath id="c33"><rect x="225.0" y="390.0" width="81.0" height="21.0"/></clipPath><clipPath id="c34"><rect x="310.0" y="390.0" width="86.0" height="21.0"/></clipPath><clipPath id="c35"><rect x="52.0" y="782.0" width="80.5" height="26.0"/></clipPath><clipPath id="c36"><rect x="140.5" y="782.0" width="80.5" height="26.0"/></clipPath><clipPath id="c37"><rect x="229.0" y="782.0" width="80.5" height="26.0"/></clipPath><clipPath id="c38"><rect x="317.5" y="782.0" width="80.5" height="26.0"/></clipPath><clipPath id="c39"><rect x="52.0" y="812.0" width="110.0" height="34.0"/></clipPath><clipPath id="c40"><rect x="170.0" y="812.0" width="110.0" height="34.0"/></clipPath><clipPath id="c41"><rect x="288.0" y="812.0" width="110.0" height="34.0"/></clipPath><clipPath id="c42"><rect x="52.0" y="850.0" width="80.5" height="26.0"/></clipPath><clipPath id="c43"><rect x="140.5" y="850.0" width="80.5" height="26.0"/></clipPath><clipPath id="c44"><rect x="229.0" y="850.0" width="80.5" height="26.0"/></clipPath><clipPath id="c45"><rect x="317.5" y="850.0" width="80.5" height="26.0"/></clipPath><clipPath id="c46"><rect x="414.0" y="860.0" width="242.0" height="30.0"/></clipPath><clipPath id="c47"><rect x="672.0" y="136.0" width="87.0" height="40.0"/></clipPath><clipPath id="c48"><rect x="767.0" y="136.0" width="71.9" height="40.0"/></clipPath><clipPath id="c49"><rect x="846.9" y="136.0" width="71.9" height="40.0"/></clipPath><clipPath id="c50"><rect x="926.7" y="136.0" width="71.9" height="40.0"/></clipPath><clipPath id="c51"><rect x="1006.6" y="136.0" width="71.9" height="40.0"/></clipPath><clipPath id="c52"><rect x="1086.4" y="136.0" width="71.9" height="40.0"/></clipPath><clipPath id="c53"><rect x="1166.3" y="136.0" width="147.7" height="40.0"/></clipPath><clipPath id="c54"><rect x="672.0" y="180.0" width="155.2" height="26.0"/></clipPath><clipPath id="c55"><rect x="834.2" y="180.0" width="155.2" height="26.0"/></clipPath><clipPath id="c56"><rect x="996.5" y="180.0" width="155.2" height="26.0"/></clipPath><clipPath id="c57"><rect x="1158.8" y="180.0" width="155.2" height="26.0"/></clipPath><clipPath id="c58"><rect x="677.0" y="236.0" width="87.7" height="106.8"/></clipPath><clipPath id="c59"><rect x="794.7" y="236.0" width="87.7" height="106.8"/></clipPath><clipPath id="c60"><rect x="890.3" y="236.0" width="87.7" height="106.8"/></clipPath><clipPath id="c61"><rect x="1008.0" y="236.0" width="87.7" height="106.8"/></clipPath><clipPath id="c62"><rect x="1103.7" y="236.0" width="87.7" height="106.8"/></clipPath><clipPath id="c63"><rect x="1221.3" y="236.0" width="87.7" height="106.8"/></clipPath><clipPath id="c64"><rect x="677.0" y="345.8" width="87.7" height="106.8"/></clipPath><clipPath id="c65"><rect x="794.7" y="345.8" width="87.7" height="106.8"/></clipPath><clipPath id="c66"><rect x="890.3" y="345.8" width="87.7" height="106.8"/></clipPath><clipPath id="c67"><rect x="1008.0" y="345.8" width="87.7" height="106.8"/></clipPath><clipPath id="c68"><rect x="1103.7" y="345.8" width="87.7" height="106.8"/></clipPath><clipPath id="c69"><rect x="1221.3" y="345.8" width="87.7" height="106.8"/></clipPath><clipPath id="c70"><rect x="677.0" y="455.7" width="87.7" height="106.8"/></clipPath><clipPath id="c71"><rect x="794.7" y="455.7" width="87.7" height="106.8"/></clipPath><clipPath id="c72"><rect x="890.3" y="455.7" width="87.7" height="106.8"/></clipPath><clipPath id="c73"><rect x="1008.0" y="455.7" width="87.7" height="106.8"/></clipPath><clipPath id="c74"><rect x="1103.7" y="455.7" width="87.7" height="106.8"/></clipPath><clipPath id="c75"><rect x="1221.3" y="455.7" width="87.7" height="106.8"/></clipPath><clipPath id="c76"><rect x="677.0" y="565.5" width="87.7" height="106.8"/></clipPath><clipPath id="c77"><rect x="794.7" y="565.5" width="87.7" height="106.8"/></clipPath><clipPath id="c78"><rect x="890.3" y="565.5" width="87.7" height="106.8"/></clipPath><clipPath id="c79"><rect x="1008.0" y="565.5" width="87.7" height="106.8"/></clipPath><clipPath id="c80"><rect x="1103.7" y="565.5" width="87.7" height="106.8"/></clipPath><clipPath id="c81"><rect x="1221.3" y="565.5" width="87.7" height="106.8"/></clipPath><clipPath id="c82"><rect x="677.0" y="675.3" width="87.7" height="106.8"/></clipPath><clipPath id="c83"><rect x="794.7" y="675.3" width="87.7" height="106.8"/></clipPath><clipPath id="c84"><rect x="890.3" y="675.3" width="87.7" height="106.8"/></clipPath><clipPath id="c85"><rect x="1008.0" y="675.3" width="87.7" height="106.8"/></clipPath><clipPath id="c86"><rect x="1103.7" y="675.3" width="87.7" height="106.8"/></clipPath><clipPath id="c87"><rect x="1221.3" y="675.3" width="87.7" height="106.8"/></clipPath><clipPath id="c88"><rect x="677.0" y="785.2" width="87.7" height="106.8"/></clipPath><clipPath id="c89"><rect x="794.7" y="785.2" width="87.7" height="106.8"/></clipPath><clipPath id="c90"><rect x="890.3" y="785.2" width="87.7" height="106.8"/></clipPath><clipPath id="c91"><rect x="1008.0" y="785.2" width="87.7" height="106.8"/></clipPath><clipPath id="c92"><rect x="1103.7" y="785.2" width="87.7" height="106.8"/></clipPath><clipPath id="c93"><rect x="1221.3" y="785.2" width="87.7" height="106.8"/></clipPath></defs>
+<rect x="0.0" y="0.0" width="1360.0" height="1050.0" fill="#ffffff"/>
+<text x="40.0" y="66.0" font-family="DejaVu Sans Mono,Consolas,monospace" font-size="30.0" fill="#0a58a8" font-weight="bold" text-anchor="start">0</text>
+<text x="84.0" y="64.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="21.0" fill="#1a1a1a" font-weight="bold" text-anchor="start">Today, with two columns added</text>
+<text x="40.0" y="92.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="12.5" fill="#3f4e56" font-weight="normal" text-anchor="start">Unreadable at the width that matters. Line 2 shows exactly what the operator would see.</text>
+<text x="40.0" y="112.0" font-family="DejaVu Sans Mono,Consolas,monospace" font-size="11.0" fill="#666666" font-weight="normal" text-anchor="start">zone 620 px   ·   editor open   ·   table 350 px   ·   PER ARM 85 px (≈12 chars)</text>
+<line x1="40.0" y1="122.0" x2="1320.0" y2="122.0" stroke="#aebcc2" stroke-width="1.20"/>
+<rect x="40.0" y="132.0" width="1280.0" height="800.0" fill="#f2f2f2" stroke="#8d979b" stroke-width="1.50"/>
+<rect x="44.0" y="136.0" width="620.0" height="764.0" fill="#ffffff" stroke="#c4c4c4" stroke-width="1.00"/>
+<rect x="50.0" y="142.0" width="350.0" height="18.0" fill="#e3f3e3" stroke="#dcdcdc" stroke-width="1.00"/>
+<text x="55.0" y="155.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="bold" text-anchor="start">Program — teach &amp; run</text>
+<rect x="50.0" y="163.0" width="350.0" height="17.0" fill="#f7f9fb" stroke="#dcdcdc" stroke-width="1.00"/>
+<text x="55.0" y="175.0" font-family="DejaVu Sans Mono,Consolas,monospace" font-size="9.0" fill="#1a5fa8" font-weight="bold" text-anchor="start" clip-path="url(#c1)">A</text>
+<text x="64.0" y="175.0" font-family="DejaVu Sans Mono,Consolas,monospace" font-size="9.0" fill="#666666" font-weight="normal" text-anchor="start" clip-path="url(#c1)">-412.3 188.0 505.1</text>
+<text x="168.0" y="175.0" font-family="DejaVu Sans Mono,Consolas,monospace" font-size="9.0" fill="#8a4a1a" font-weight="bold" text-anchor="start" clip-path="url(#c1)">B</text>
+<text x="177.0" y="175.0" font-family="DejaVu Sans Mono,Consolas,monospace" font-size="9.0" fill="#666666" font-weight="normal" text-anchor="start" clip-path="url(#c1)">-395.8 -190.4 504.7</text>
+<text x="288.0" y="175.0" font-family="DejaVu Sans Mono,Consolas,monospace" font-size="9.0" fill="#666666" font-weight="normal" text-anchor="start" clip-path="url(#c1)">gap 380.2</text>
+<rect x="50.0" y="184.0" width="350.0" height="592.0" fill="#ffffff" stroke="#dcdcdc" stroke-width="1.00"/>
+<line x1="50.0" y1="201.0" x2="400.0" y2="201.0" stroke="#c4c4c4" stroke-width="1.00"/>
+<text x="74.0" y="196.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="end">#</text>
+<text x="82.0" y="196.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="start">step</text>
+<text x="144.0" y="196.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="start">Arm A</text>
+<text x="229.0" y="196.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="start">Arm B</text>
+<text x="314.0" y="196.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="start">link</text>
+<text x="74.0" y="215.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="normal" text-anchor="end">1</text>
+<text x="82.0" y="215.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#1a1a1a" font-weight="bold" text-anchor="start" clip-path="url(#c2)">MOVE</text>
+<rect x="140.0" y="201.0" width="85.0" height="21.0" fill="#e6eef8"/>
+<text x="144.0" y="215.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="normal" text-anchor="start" clip-path="url(#c3)">home_A  movej</text>
+<rect x="225.0" y="201.0" width="85.0" height="21.0" fill="#f8ece4"/>
+<text x="229.0" y="215.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="normal" text-anchor="start" clip-path="url(#c4)">home_B  movej</text>
+<text x="314.0" y="215.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="normal" text-anchor="start" clip-path="url(#c5)">⇉ together</text>
+<line x1="50.0" y1="222.0" x2="400.0" y2="222.0" stroke="#eeeeee" stroke-width="1.00"/>
+<text x="74.0" y="236.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="normal" text-anchor="end">2</text>
+<text x="82.0" y="236.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#1a1a1a" font-weight="bold" text-anchor="start" clip-path="url(#c6)">MOVE</text>
+<rect x="140.0" y="222.0" width="85.0" height="21.0" fill="#e6eef8"/>
+<text x="144.0" y="236.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="normal" text-anchor="start" clip-path="url(#c7)">pick + world Z+50.0  movel</text>
+<rect x="225.0" y="222.0" width="85.0" height="21.0" fill="#f8ece4"/>
+<text x="229.0" y="236.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="normal" text-anchor="start" clip-path="url(#c8)">pick + world Z+50.0  movel</text>
+<text x="314.0" y="236.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="normal" text-anchor="start" clip-path="url(#c9)">⇉ together</text>
+<line x1="50.0" y1="243.0" x2="400.0" y2="243.0" stroke="#eeeeee" stroke-width="1.00"/>
+<text x="74.0" y="257.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="normal" text-anchor="end">3</text>
+<text x="82.0" y="257.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#1a1a1a" font-weight="bold" text-anchor="start" clip-path="url(#c10)">MOVE</text>
+<rect x="140.0" y="243.0" width="85.0" height="21.0" fill="#e6eef8"/>
+<text x="144.0" y="257.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="normal" text-anchor="start" clip-path="url(#c11)">world Z-50.0  movel</text>
+<rect x="225.0" y="243.0" width="85.0" height="21.0" fill="#f8ece4"/>
+<text x="229.0" y="257.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="normal" text-anchor="start" clip-path="url(#c12)">world Z-50.0  movel</text>
+<text x="314.0" y="257.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="normal" text-anchor="start" clip-path="url(#c13)">⇉ together</text>
+<line x1="50.0" y1="264.0" x2="400.0" y2="264.0" stroke="#eeeeee" stroke-width="1.00"/>
+<text x="74.0" y="278.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="normal" text-anchor="end">4</text>
+<text x="82.0" y="278.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#1a1a1a" font-weight="bold" text-anchor="start" clip-path="url(#c14)">GRIP</text>
+<rect x="140.0" y="264.0" width="85.0" height="21.0" fill="#e6eef8"/>
+<text x="144.0" y="278.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="normal" text-anchor="start" clip-path="url(#c15)">close DO0</text>
+<rect x="225.0" y="264.0" width="85.0" height="21.0" fill="#f8ece4"/>
+<text x="229.0" y="278.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="normal" text-anchor="start" clip-path="url(#c16)">close DO0</text>
+<text x="314.0" y="278.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="normal" text-anchor="start" clip-path="url(#c17)">⇉</text>
+<line x1="50.0" y1="285.0" x2="400.0" y2="285.0" stroke="#eeeeee" stroke-width="1.00"/>
+<text x="74.0" y="299.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="normal" text-anchor="end">5</text>
+<text x="82.0" y="299.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#1a1a1a" font-weight="bold" text-anchor="start" clip-path="url(#c18)">MOVE</text>
+<rect x="140.0" y="285.0" width="170.0" height="21.0" fill="#f0f0ee"/>
+<text x="145.0" y="299.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="normal" text-anchor="start" clip-path="url(#c19)">world Z+100.0</text>
+<text x="314.0" y="299.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="normal" text-anchor="start" clip-path="url(#c20)">⇉⇉ pair</text>
+<line x1="50.0" y1="306.0" x2="400.0" y2="306.0" stroke="#eeeeee" stroke-width="1.00"/>
+<text x="74.0" y="320.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="normal" text-anchor="end">6</text>
+<text x="82.0" y="320.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#1a1a1a" font-weight="bold" text-anchor="start" clip-path="url(#c21)">ATTACH</text>
+<rect x="140.0" y="306.0" width="170.0" height="21.0" fill="#f0f0ee"/>
+<text x="145.0" y="320.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="normal" text-anchor="start" clip-path="url(#c22)">take hold of 'box' (origin midpoint)</text>
+<line x1="50.0" y1="327.0" x2="400.0" y2="327.0" stroke="#eeeeee" stroke-width="1.00"/>
+<rect x="51.0" y="327.0" width="348.0" height="21.0" fill="#f4fbf4"/>
+<text x="74.0" y="341.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="normal" text-anchor="end">7</text>
+<text x="82.0" y="341.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#1a1a1a" font-weight="bold" text-anchor="start" clip-path="url(#c23)">MOVE</text>
+<rect x="140.0" y="327.0" width="170.0" height="21.0" fill="#f0f0ee"/>
+<text x="145.0" y="341.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="normal" text-anchor="start" clip-path="url(#c24)">⟨obj⟩ place_1</text>
+<text x="314.0" y="341.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="normal" text-anchor="start" clip-path="url(#c25)">⛓ coupled</text>
+<line x1="50.0" y1="348.0" x2="400.0" y2="348.0" stroke="#eeeeee" stroke-width="1.00"/>
+<text x="74.0" y="362.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="normal" text-anchor="end">8</text>
+<text x="82.0" y="362.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#1a1a1a" font-weight="bold" text-anchor="start" clip-path="url(#c26)">MOVE</text>
+<rect x="140.0" y="348.0" width="170.0" height="21.0" fill="#f0f0ee"/>
+<text x="145.0" y="362.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="normal" text-anchor="start" clip-path="url(#c27)">⟨obj⟩ object RZ+45.0</text>
+<text x="314.0" y="362.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="normal" text-anchor="start" clip-path="url(#c28)">⛓ coupled</text>
+<line x1="50.0" y1="369.0" x2="400.0" y2="369.0" stroke="#eeeeee" stroke-width="1.00"/>
+<text x="74.0" y="383.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="normal" text-anchor="end">9</text>
+<text x="82.0" y="383.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#1a1a1a" font-weight="bold" text-anchor="start" clip-path="url(#c29)">DETACH</text>
+<rect x="140.0" y="369.0" width="170.0" height="21.0" fill="#f0f0ee"/>
+<text x="145.0" y="383.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="normal" text-anchor="start" clip-path="url(#c30)">let go</text>
+<line x1="50.0" y1="390.0" x2="400.0" y2="390.0" stroke="#eeeeee" stroke-width="1.00"/>
+<text x="74.0" y="404.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="normal" text-anchor="end">10</text>
+<text x="82.0" y="404.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#1a1a1a" font-weight="bold" text-anchor="start" clip-path="url(#c31)">MOVE</text>
+<rect x="140.0" y="390.0" width="85.0" height="21.0" fill="#e6eef8"/>
+<text x="144.0" y="404.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="normal" text-anchor="start" clip-path="url(#c32)">home_A  movej</text>
+<rect x="225.0" y="390.0" width="85.0" height="21.0" fill="#f8ece4"/>
+<text x="229.0" y="404.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="normal" text-anchor="start" clip-path="url(#c33)">·</text>
+<text x="314.0" y="404.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="normal" text-anchor="start" clip-path="url(#c34)"></text>
+<line x1="50.0" y1="411.0" x2="400.0" y2="411.0" stroke="#eeeeee" stroke-width="1.00"/>
+<rect x="50.0" y="782.0" width="84.5" height="26.0" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="92.2" y="798.8" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="bold" text-anchor="middle" clip-path="url(#c35)">▲</text>
+<rect x="138.5" y="782.0" width="84.5" height="26.0" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="180.8" y="798.8" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="bold" text-anchor="middle" clip-path="url(#c36)">▼</text>
+<rect x="227.0" y="782.0" width="84.5" height="26.0" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="269.2" y="798.8" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="bold" text-anchor="middle" clip-path="url(#c37)">Delete</text>
+<rect x="315.5" y="782.0" width="84.5" height="26.0" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="357.8" y="798.8" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="bold" text-anchor="middle" clip-path="url(#c38)">On/off</text>
+<rect x="50.0" y="812.0" width="114.0" height="34.0" fill="#1a7a3a" stroke="#1a7a3a" stroke-width="1.00" rx="2.0"/>
+<text x="107.0" y="833.7" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="13.0" fill="#ffffff" font-weight="bold" text-anchor="middle" clip-path="url(#c39)">▶ Run</text>
+<rect x="168.0" y="812.0" width="114.0" height="34.0" fill="#cc7700" stroke="#cc7700" stroke-width="1.00" rx="2.0"/>
+<text x="225.0" y="833.7" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="13.0" fill="#ffffff" font-weight="bold" text-anchor="middle" clip-path="url(#c40)">⏸ Pause</text>
+<rect x="286.0" y="812.0" width="114.0" height="34.0" fill="#aa2222" stroke="#aa2222" stroke-width="1.00" rx="2.0"/>
+<text x="343.0" y="833.7" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="13.0" fill="#ffffff" font-weight="bold" text-anchor="middle" clip-path="url(#c41)">■ Stop</text>
+<rect x="50.0" y="850.0" width="84.5" height="26.0" fill="#5a3a8a" stroke="#5a3a8a" stroke-width="1.00" rx="2.0"/>
+<text x="92.2" y="866.8" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#ffffff" font-weight="bold" text-anchor="middle" clip-path="url(#c42)"> Save</text>
+<rect x="138.5" y="850.0" width="84.5" height="26.0" fill="#5a3a8a" stroke="#5a3a8a" stroke-width="1.00" rx="2.0"/>
+<text x="180.8" y="866.8" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#ffffff" font-weight="bold" text-anchor="middle" clip-path="url(#c43)"> Load</text>
+<rect x="227.0" y="850.0" width="84.5" height="26.0" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="269.2" y="866.8" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="bold" text-anchor="middle" clip-path="url(#c44)">Loop</text>
+<rect x="315.5" y="850.0" width="84.5" height="26.0" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="357.8" y="866.8" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="bold" text-anchor="middle" clip-path="url(#c45)">Dry run</text>
+<line x1="408.0" y1="142.0" x2="408.0" y2="894.0" stroke="#dcdcdc" stroke-width="1.00"/>
+<rect x="412.0" y="142.0" width="246.0" height="18.0" fill="#e3f3e3" stroke="#dcdcdc" stroke-width="1.00"/>
+<text x="417.0" y="155.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.5" fill="#1a1a1a" font-weight="bold" text-anchor="start">Add a step</text>
+<text x="412.0" y="176.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="normal" text-anchor="start">kind</text>
+<rect x="452.0" y="166.0" width="206.0" height="16.0" fill="#ffffff" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="456.0" y="178.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#1a1a1a" font-weight="normal" text-anchor="start">MOVE ▾</text>
+<text x="412.0" y="197.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="normal" text-anchor="start">link</text>
+<rect x="452.0" y="187.0" width="206.0" height="16.0" fill="#ffffff" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="456.0" y="199.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#1a1a1a" font-weight="normal" text-anchor="start">together ▾</text>
+<text x="412.0" y="218.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="normal" text-anchor="start"></text>
+<rect x="452.0" y="208.0" width="206.0" height="16.0" fill="#ffffff" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="456.0" y="220.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#1a1a1a" font-weight="normal" text-anchor="start">⧉  mirror A → B</text>
+<rect x="412.0" y="229.0" width="120.5" height="148.0" fill="#e6eef8" stroke="#dcdcdc" stroke-width="1.00" rx="2.0"/>
+<text x="417.0" y="242.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#1a5fa8" font-weight="bold" text-anchor="start">Arm A</text>
+<rect x="416.0" y="249.0" width="112.5" height="16.0" fill="#ffffff" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="420.0" y="261.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.0" fill="#1a1a1a" font-weight="normal" text-anchor="start">place + offset</text>
+<rect x="416.0" y="269.0" width="112.5" height="16.0" fill="#ffffff" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="420.0" y="281.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.0" fill="#1a1a1a" font-weight="normal" text-anchor="start">pick ▾</text>
+<rect x="416.0" y="289.0" width="112.5" height="16.0" fill="#ffffff" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="420.0" y="301.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.0" fill="#1a1a1a" font-weight="normal" text-anchor="start">world ▾</text>
+<rect x="416.0" y="309.0" width="112.5" height="16.0" fill="#ffffff" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="420.0" y="321.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.0" fill="#1a1a1a" font-weight="normal" text-anchor="start">Z  +50.0  mm</text>
+<rect x="416.0" y="329.0" width="112.5" height="16.0" fill="#ffffff" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="420.0" y="341.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.0" fill="#1a1a1a" font-weight="normal" text-anchor="start">movel ▾</text>
+<rect x="416.0" y="349.0" width="112.5" height="16.0" fill="#ffffff" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="420.0" y="361.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.0" fill="#1a1a1a" font-weight="normal" text-anchor="start">Here</text>
+<rect x="537.5" y="229.0" width="120.5" height="148.0" fill="#f8ece4" stroke="#dcdcdc" stroke-width="1.00" rx="2.0"/>
+<text x="542.5" y="242.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#8a4a1a" font-weight="bold" text-anchor="start">Arm B</text>
+<rect x="541.5" y="249.0" width="112.5" height="16.0" fill="#ffffff" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="545.5" y="261.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.0" fill="#1a1a1a" font-weight="normal" text-anchor="start">place + offset</text>
+<rect x="541.5" y="269.0" width="112.5" height="16.0" fill="#ffffff" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="545.5" y="281.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.0" fill="#1a1a1a" font-weight="normal" text-anchor="start">pick ▾</text>
+<rect x="541.5" y="289.0" width="112.5" height="16.0" fill="#ffffff" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="545.5" y="301.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.0" fill="#1a1a1a" font-weight="normal" text-anchor="start">world ▾</text>
+<rect x="541.5" y="309.0" width="112.5" height="16.0" fill="#ffffff" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="545.5" y="321.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.0" fill="#1a1a1a" font-weight="normal" text-anchor="start">Z  +50.0  mm</text>
+<rect x="541.5" y="329.0" width="112.5" height="16.0" fill="#ffffff" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="545.5" y="341.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.0" fill="#1a1a1a" font-weight="normal" text-anchor="start">movel ▾</text>
+<rect x="541.5" y="349.0" width="112.5" height="16.0" fill="#ffffff" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="545.5" y="361.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.0" fill="#1a1a1a" font-weight="normal" text-anchor="start">Here</text>
+<rect x="412.0" y="860.0" width="246.0" height="30.0" fill="#1a7a3a" stroke="#1a7a3a" stroke-width="1.00" rx="2.0"/>
+<text x="535.0" y="879.3" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="12.0" fill="#ffffff" font-weight="bold" text-anchor="middle" clip-path="url(#c46)">＋  Add step</text>
+<rect x="670.0" y="136.0" width="91.0" height="40.0" fill="#aa2222" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="715.5" y="160.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="11.0" fill="#ffffff" font-weight="bold" text-anchor="middle" clip-path="url(#c47)">● REAL</text>
+<rect x="765.0" y="136.0" width="75.9" height="40.0" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="803.0" y="160.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="11.0" fill="#1a1a1a" font-weight="bold" text-anchor="middle" clip-path="url(#c48)">A</text>
+<rect x="844.9" y="136.0" width="75.9" height="40.0" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="882.8" y="160.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="11.0" fill="#1a1a1a" font-weight="bold" text-anchor="middle" clip-path="url(#c49)">B</text>
+<rect x="924.7" y="136.0" width="75.9" height="40.0" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="962.7" y="160.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="11.0" fill="#1a1a1a" font-weight="bold" text-anchor="middle" clip-path="url(#c50)">Power</text>
+<rect x="1004.6" y="136.0" width="75.9" height="40.0" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1042.5" y="160.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="11.0" fill="#1a1a1a" font-weight="bold" text-anchor="middle" clip-path="url(#c51)">Brake</text>
+<rect x="1084.4" y="136.0" width="75.9" height="40.0" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1122.4" y="160.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="11.0" fill="#1a1a1a" font-weight="bold" text-anchor="middle" clip-path="url(#c52)">Unlock</text>
+<rect x="1164.3" y="136.0" width="151.7" height="40.0" fill="#aa2222" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1240.1" y="160.7" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="13.0" fill="#ffffff" font-weight="bold" text-anchor="middle" clip-path="url(#c53)">■ STOP</text>
+<rect x="670.0" y="180.0" width="159.2" height="26.0" fill="#e4e4e4" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="749.6" y="197.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="11.0" fill="#1a1a1a" font-weight="bold" text-anchor="middle" clip-path="url(#c54)">Points</text>
+<rect x="832.2" y="180.0" width="159.2" height="26.0" fill="#e4e4e4" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="911.9" y="197.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="11.0" fill="#1a1a1a" font-weight="bold" text-anchor="middle" clip-path="url(#c55)">Vars</text>
+<rect x="994.5" y="180.0" width="159.2" height="26.0" fill="#e4e4e4" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1074.1" y="197.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="11.0" fill="#1a1a1a" font-weight="bold" text-anchor="middle" clip-path="url(#c56)">Object</text>
+<rect x="1156.8" y="180.0" width="159.2" height="26.0" fill="#1a7a3a" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1236.4" y="197.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="11.0" fill="#ffffff" font-weight="bold" text-anchor="middle" clip-path="url(#c57)">Jog</text>
+<rect x="670.0" y="210.0" width="646.0" height="690.0" fill="#ffffff" stroke="#c4c4c4" stroke-width="1.00"/>
+<rect x="675.0" y="215.0" width="209.3" height="17.0" fill="#e6eef8" stroke="#dcdcdc" stroke-width="1.00"/>
+<text x="779.7" y="227.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#1a5fa8" font-weight="bold" text-anchor="middle">Arm A</text>
+<rect x="888.3" y="215.0" width="209.3" height="17.0" fill="#f4f0e0" stroke="#dcdcdc" stroke-width="1.00"/>
+<text x="993.0" y="227.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#1a1a1a" font-weight="bold" text-anchor="middle">A+B — synchronized</text>
+<rect x="1101.7" y="215.0" width="209.3" height="17.0" fill="#f8ece4" stroke="#dcdcdc" stroke-width="1.00"/>
+<text x="1206.3" y="227.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#8a4a1a" font-weight="bold" text-anchor="middle">Arm B</text>
+<rect x="675.0" y="236.0" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="720.8" y="293.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c58)">−</text>
+<text x="779.7" y="290.9" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="middle">X</text>
+<rect x="792.7" y="236.0" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="838.5" y="293.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c59)">+</text>
+<rect x="888.3" y="236.0" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="934.2" y="293.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c60)">−</text>
+<text x="993.0" y="290.9" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="middle">X</text>
+<rect x="1006.0" y="236.0" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1051.8" y="293.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c61)">+</text>
+<rect x="1101.7" y="236.0" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1147.5" y="293.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c62)">−</text>
+<text x="1206.3" y="290.9" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="middle">X</text>
+<rect x="1219.3" y="236.0" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1265.2" y="293.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c63)">+</text>
+<rect x="675.0" y="345.8" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="720.8" y="402.9" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c64)">−</text>
+<text x="779.7" y="400.8" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="middle">Y</text>
+<rect x="792.7" y="345.8" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="838.5" y="402.9" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c65)">+</text>
+<rect x="888.3" y="345.8" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="934.2" y="402.9" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c66)">−</text>
+<text x="993.0" y="400.8" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="middle">Y</text>
+<rect x="1006.0" y="345.8" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1051.8" y="402.9" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c67)">+</text>
+<rect x="1101.7" y="345.8" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1147.5" y="402.9" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c68)">−</text>
+<text x="1206.3" y="400.8" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="middle">Y</text>
+<rect x="1219.3" y="345.8" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1265.2" y="402.9" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c69)">+</text>
+<rect x="675.0" y="455.7" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="720.8" y="512.7" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c70)">−</text>
+<text x="779.7" y="510.6" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="middle">Z</text>
+<rect x="792.7" y="455.7" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="838.5" y="512.7" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c71)">+</text>
+<rect x="888.3" y="455.7" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="934.2" y="512.7" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c72)">−</text>
+<text x="993.0" y="510.6" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="middle">Z</text>
+<rect x="1006.0" y="455.7" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1051.8" y="512.7" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c73)">+</text>
+<rect x="1101.7" y="455.7" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1147.5" y="512.7" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c74)">−</text>
+<text x="1206.3" y="510.6" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="middle">Z</text>
+<rect x="1219.3" y="455.7" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1265.2" y="512.7" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c75)">+</text>
+<rect x="675.0" y="565.5" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="720.8" y="622.5" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c76)">−</text>
+<text x="779.7" y="620.4" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="middle">RX</text>
+<rect x="792.7" y="565.5" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="838.5" y="622.5" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c77)">+</text>
+<rect x="888.3" y="565.5" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="934.2" y="622.5" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c78)">−</text>
+<text x="993.0" y="620.4" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="middle">RX</text>
+<rect x="1006.0" y="565.5" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1051.8" y="622.5" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c79)">+</text>
+<rect x="1101.7" y="565.5" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1147.5" y="622.5" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c80)">−</text>
+<text x="1206.3" y="620.4" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="middle">RX</text>
+<rect x="1219.3" y="565.5" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1265.2" y="622.5" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c81)">+</text>
+<rect x="675.0" y="675.3" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="720.8" y="732.3" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c82)">−</text>
+<text x="779.7" y="730.2" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="middle">RY</text>
+<rect x="792.7" y="675.3" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="838.5" y="732.3" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c83)">+</text>
+<rect x="888.3" y="675.3" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="934.2" y="732.3" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c84)">−</text>
+<text x="993.0" y="730.2" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="middle">RY</text>
+<rect x="1006.0" y="675.3" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1051.8" y="732.3" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c85)">+</text>
+<rect x="1101.7" y="675.3" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1147.5" y="732.3" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c86)">−</text>
+<text x="1206.3" y="730.2" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="middle">RY</text>
+<rect x="1219.3" y="675.3" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1265.2" y="732.3" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c87)">+</text>
+<rect x="675.0" y="785.2" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="720.8" y="842.2" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c88)">−</text>
+<text x="779.7" y="840.1" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="middle">RZ</text>
+<rect x="792.7" y="785.2" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="838.5" y="842.2" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c89)">+</text>
+<rect x="888.3" y="785.2" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="934.2" y="842.2" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c90)">−</text>
+<text x="993.0" y="840.1" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="middle">RZ</text>
+<rect x="1006.0" y="785.2" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1051.8" y="842.2" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c91)">+</text>
+<rect x="1101.7" y="785.2" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1147.5" y="842.2" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c92)">−</text>
+<text x="1206.3" y="840.1" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="9.5" fill="#666666" font-weight="bold" text-anchor="middle">RZ</text>
+<rect x="1219.3" y="785.2" width="91.7" height="106.8" fill="#ececec" stroke="#c4c4c4" stroke-width="1.00" rx="2.0"/>
+<text x="1265.2" y="842.2" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="bold" text-anchor="middle" clip-path="url(#c93)">+</text>
+<rect x="44.0" y="904.0" width="1272.0" height="24.0" fill="#ffffff" stroke="#c4c4c4" stroke-width="1.00"/>
+<text x="50.0" y="920.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#1a1a1a" font-weight="bold" text-anchor="start">Messages</text>
+<text x="110.0" y="920.0" font-family="-apple-system,Segoe UI,Roboto,DejaVu Sans,sans-serif" font-size="10.0" fill="#666666" font-weight="normal" text-anchor="start">line 5 · pair move 100.0 mm world Z at 50 mm/s</text>
+<line x1="50.0" y1="946.0" x2="50.0" y2="955.0" stroke="#9aa8ad" stroke-width="1.20"/>
+<line x1="78.0" y1="946.0" x2="78.0" y2="955.0" stroke="#9aa8ad" stroke-width="1.20"/>
+<line x1="50.0" y1="950.5" x2="78.0" y2="950.5" stroke="#9aa8ad" stroke-width="1.20"/>
+<text x="64.0" y="970.0" font-family="DejaVu Sans Mono,Consolas,monospace" font-size="9.5" fill="#9aa8ad" font-weight="normal" text-anchor="middle">28</text>
+<line x1="78.0" y1="946.0" x2="78.0" y2="955.0" stroke="#9aa8ad" stroke-width="1.20"/>
+<line x1="140.0" y1="946.0" x2="140.0" y2="955.0" stroke="#9aa8ad" stroke-width="1.20"/>
+<line x1="78.0" y1="950.5" x2="140.0" y2="950.5" stroke="#9aa8ad" stroke-width="1.20"/>
+<text x="109.0" y="970.0" font-family="DejaVu Sans Mono,Consolas,monospace" font-size="9.5" fill="#9aa8ad" font-weight="normal" text-anchor="middle">62</text>
+<line x1="140.0" y1="946.0" x2="140.0" y2="955.0" stroke="#0a58a8" stroke-width="1.20"/>
+<line x1="225.0" y1="946.0" x2="225.0" y2="955.0" stroke="#0a58a8" stroke-width="1.20"/>
+<line x1="140.0" y1="950.5" x2="225.0" y2="950.5" stroke="#0a58a8" stroke-width="1.20"/>
+<text x="182.5" y="970.0" font-family="DejaVu Sans Mono,Consolas,monospace" font-size="11.0" fill="#0a58a8" font-weight="bold" text-anchor="middle">85 px</text>
+<text x="182.5" y="983.0" font-family="DejaVu Sans Mono,Consolas,monospace" font-size="9.0" fill="#666666" font-weight="normal" text-anchor="middle">≈ 12 characters</text>
+<line x1="225.0" y1="946.0" x2="225.0" y2="955.0" stroke="#0a58a8" stroke-width="1.20"/>
+<line x1="310.0" y1="946.0" x2="310.0" y2="955.0" stroke="#0a58a8" stroke-width="1.20"/>
+<line x1="225.0" y1="950.5" x2="310.0" y2="950.5" stroke="#0a58a8" stroke-width="1.20"/>
+<text x="267.5" y="970.0" font-family="DejaVu Sans Mono,Consolas,monospace" font-size="11.0" fill="#0a58a8" font-weight="bold" text-anchor="middle">85 px</text>
+<text x="267.5" y="983.0" font-family="DejaVu Sans Mono,Consolas,monospace" font-size="9.0" fill="#666666" font-weight="normal" text-anchor="middle">≈ 12 characters</text>
+<line x1="310.0" y1="946.0" x2="310.0" y2="955.0" stroke="#9aa8ad" stroke-width="1.20"/>
+<line x1="400.0" y1="946.0" x2="400.0" y2="955.0" stroke="#9aa8ad" stroke-width="1.20"/>
+<line x1="310.0" y1="950.5" x2="400.0" y2="950.5" stroke="#9aa8ad" stroke-width="1.20"/>
+<text x="355.0" y="970.0" font-family="DejaVu Sans Mono,Consolas,monospace" font-size="9.5" fill="#9aa8ad" font-weight="normal" text-anchor="middle">90</text>
+<text x="40.0" y="1036.0" font-family="DejaVu Sans Mono,Consolas,monospace" font-size="9.5" fill="#9aa8ad" font-weight="normal" text-anchor="start">dual UR5 cell  ·  panel layout  ·  drawn to the 1280x800 design size  ·  docs/program_line_design.md</text>
+</svg>

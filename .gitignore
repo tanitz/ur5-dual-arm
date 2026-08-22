@@ -12,3 +12,9 @@ update/
 
 __pycache__/
 *.py[cod]
+
+# photographs taken by scripts/ur5dual-snap: output, not source
+captures/
+
+# per-frame RealSense/OpenBox diagnostics: useful locally, too large for git
+logs/

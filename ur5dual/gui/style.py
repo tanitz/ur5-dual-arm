@@ -94,6 +94,17 @@ def field():
             f"border-radius:{sx(4)}px;padding:{sx(2)}px {sx(6)}px;}}")
 
 
+def slider():
+    """A slider a thumb can hit: a groove worth seeing and a wide handle."""
+    return (f"QSlider::groove:horizontal{{height:{sx(6)}px;background:#dfe4e8;"
+            f"border-radius:{sx(3)}px;}}"
+            f"QSlider::sub-page:horizontal{{background:{BLUE};"
+            f"border-radius:{sx(3)}px;}}"
+            f"QSlider::handle:horizontal{{width:{sx(16)}px;"
+            f"margin:-{sx(7)}px 0;background:#ffffff;border:1px solid #7a8a94;"
+            f"border-radius:{sx(4)}px;}}")
+
+
 def tabs():
     return (f"QTabBar::tab{{height:{sx(36)}px;min-width:{sx(96)}px;"
             f"font-size:{fpx(15)}px;font-weight:bold;background:#ffffff;"
@@ -101,6 +112,27 @@ def tabs():
             f"QTabBar::tab:selected{{background:{GREEN};color:#ffffff;"
             f"border:1px solid #b0b0b0;}}"
             f"QTabWidget::pane{{border:1px solid #b0b0b0;}}")
+
+
+def rail_icon(accent, filled=False):
+    """One icon on the rail: unselected, chosen-but-closed, or open.
+
+    Three states rather than two, because the rail keeps showing which panel
+    *would* open after the sidebar is closed. Outline means chosen and shut;
+    filled means open. A border alone carries the difference, so it survives
+    the operator who cannot pick the tint out at a glance.
+    """
+    if accent is None:
+        return (f"QPushButton{{background:#ececec;color:#54636a;"
+                f"border:1px solid #b0b0b0;border-radius:{sx(4)}px;"
+                f"font-size:{fpx(13)}px;font-weight:bold;}}")
+    if filled:
+        return (f"QPushButton{{background:{accent};color:#ffffff;"
+                f"border:1px solid {accent};border-radius:{sx(4)}px;"
+                f"font-size:{fpx(13)}px;font-weight:bold;}}")
+    return (f"QPushButton{{background:#ffffff;color:{accent};"
+            f"border:{sx(2)}px solid {accent};border-radius:{sx(4)}px;"
+            f"font-size:{fpx(13)}px;font-weight:bold;}}")
 
 
 def strip(text, color="#e3f3e3"):

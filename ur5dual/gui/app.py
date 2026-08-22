@@ -20,7 +20,7 @@ from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QColor, QPalette
 from PyQt5.QtWidgets import (
     QApplication, QHBoxLayout, QMainWindow,
-    QLabel, QPlainTextEdit, QTabWidget, QVBoxLayout, QWidget,
+    QLabel, QPlainTextEdit, QStackedWidget, QVBoxLayout, QWidget,
 )
 
 REPO_ROOT = os.path.dirname(os.path.dirname(
@@ -32,19 +32,28 @@ from ur5dual.cell import Cell                                 # noqa: E402
 from ur5dual.config import ARM_IDS, DEFAULT_PATH, CellConfig  # noqa: E402
 from ur5dual.coupling import Coordinator, CouplingError       # noqa: E402
 from ur5dual.gui import style as S                            # noqa: E402
-from ur5dual.gui.panels.cell_setup import CellSetupPanel      # noqa: E402
 from ur5dual.gui.panels.jog import JogPanel                   # noqa: E402
-from ur5dual.gui.panels.objects import ObjectPanel            # noqa: E402
+from ur5dual.gui.panels.camera import CameraPanel             # noqa: E402
 from ur5dual.gui.panels.points import PointsPanel             # noqa: E402
 from ur5dual.gui.panels.program import ProgramPanel           # noqa: E402
+from ur5dual.gui.widgets.rail import IconRail                 # noqa: E402
 from ur5dual.program.executor import Executor                 # noqa: E402
 from ur5dual.program.steps import PointLibrary                # noqa: E402
+from ur5dual.vision.planar import PlaneFile                    # noqa: E402
+from ur5dual.vision.service import VisionService              # noqa: E402
 
 # a correctly configured arm reads only a few newtons at rest
 PAYLOAD_SUSPECT_N = 15.0
 
 POINTS_FILE = os.path.join(REPO_ROOT, "config", "points.json")
 PROGRAMS_DIR = os.path.join(REPO_ROOT, "config", "programs")
+
+# One width for every panel the sidebar can hold, and the reason is the program
+# rather than the panels: a sidebar that resized itself per page moved the step
+# table sideways every time an operator went from the jog keys to the points
+# list and back. 320 is what the jog keys need — layout_f_side_open.svg, one
+# target at a time — and the points list is laid out to that same width.
+SIDEBAR_W = 320
 
 # half the 1280x800 design width, less the margins between the two columns
 PROGRAM_COL_W = 620
@@ -78,8 +87,23 @@ class MainWindow(QMainWindow):
         self.cell = cell or Cell(CellConfig.load(config_path), simulated=False)
         self.cell.listeners.append(self.log)
         self.points = PointLibrary()
+        self.vision = None
         self.executor = Executor(self.cell, self.points)
         self.executor.on_log = self.log
+        # The camera belongs to the app, not to its tab: a program that asks
+        # for a detection must not depend on which panel is open, and the
+        # reading has to survive the sidebar being closed.
+        self.vision = VisionService(self.cell.config.vision, log=self.log)
+        self.executor.vision = self.vision
+        # The surface the box slides on, owned here beside the camera and for
+        # the same reason: a program that corrects a pick must not depend on
+        # which tab an operator happened to leave open. A file that is not
+        # there yet loads as an empty one; a file that is there and unreadable
+        # is worth stopping for, because the alternative is a cell that
+        # quietly measures the box a different way than it was set up to.
+        self.surface = PlaneFile.load(self.cell.config.vision.get("plane_file"))
+        self.executor.surface = self.surface
+        self.log("surface: %s" % self.surface.description)
         self.coordinator_start_error = None
         self.mode = "real"
         self.grip_output = 0
@@ -114,44 +138,47 @@ class MainWindow(QMainWindow):
         self.panels = {
             "program": ProgramPanel(self),
             "points": PointsPanel(self),
-            "vars": CellSetupPanel(self),
-            "objects": ObjectPanel(self),
+            "camera": CameraPanel(self),
             "jog": JogPanel(self),
         }
-        self.panels["vars"].geometry_changed.connect(self._geometry_changed)
+
+        self.rail = IconRail()
+        self.rail.selected.connect(self._rail_selected)
+        self.rail.toggled.connect(self._toggle_sidebar)
+        self.rail.swapped.connect(self._swap_sidebar_side)
+        self.rail.fullscreen.connect(self._toggle_fullscreen)
 
         central = QWidget()
         outer = QVBoxLayout(central)
         outer.setContentsMargins(S.sx(4), S.sx(4), S.sx(4), S.sx(4))
         outer.setSpacing(S.sx(4))
-        work = QWidget()
-        body = QHBoxLayout(work)
-        body.setContentsMargins(0, 0, 0, 0)
-        body.setSpacing(S.sx(6))
-        # The program keeps its useful editing width; everything it gives back
-        # belongs to the three-column Jog surface on the right.
-        body.addWidget(self._build_program(), 1)
+        # The cell-wide controls span everything now. They used to sit above
+        # the tab column, and a tab column that can be closed is no place for
+        # a STOP button — the sidebar may go away and STOP may not.
+        outer.addWidget(self.safety_bar, 0)
 
-        right = QWidget()
-        right_v = QVBoxLayout(right)
-        right_v.setContentsMargins(0, 0, 0, 0)
-        right_v.setSpacing(S.sx(4))
-        right_v.addWidget(self.safety_bar, 0)
-        right_v.addWidget(self._build_tabs(), 1)
-        body.addWidget(right, 2)
-        outer.addWidget(work, 1)
+        self.work = QWidget()
+        self.body = QHBoxLayout(self.work)
+        self.body.setContentsMargins(0, 0, 0, 0)
+        self.body.setSpacing(S.sx(6))
+        self.program_page = self._build_program()
+        self.sidebar = self._build_sidebar()
+        outer.addWidget(self.work, 1)
         outer.addWidget(self._build_messages(), 0)
         self.setCentralWidget(central)
+        self._apply_sidebar()
 
     def _build_program(self):
-        """The left half, and it never changes: the program being written."""
+        """The program being written, and now the zone that grows.
+
+        The cap is gone. It existed to stop a bigger screen from stretching a
+        three-column step table, and the table has two columns of targets in
+        it now — every pixel the sidebar gives back is a pixel one of the two
+        arms can be read in. The floor stays: the sidebar's own width must not
+        squeeze the program into a strip.
+        """
         page = self.panels["program"]
-        # Half the 1280x800 design width, and it holds that half: capped so a
-        # bigger screen gives its extra pixels to the tabs rather than
-        # stretching the step table, floored so the tabs' own minimum width
-        # cannot squeeze the program into a strip on the panel itself.
         page.setMinimumWidth(S.sx(PROGRAM_COL_MIN_W))
-        page.setMaximumWidth(S.sx(PROGRAM_COL_W))
         return page
 
     def _build_safety_bar(self):
@@ -226,35 +253,159 @@ class MainWindow(QMainWindow):
         self.msg_box.setVisible(expanded)
         self.messages_btn.setText("Collapse ▼" if expanded else "Expand ▲")
 
-    def _build_tabs(self):
-        self.tabs = QTabWidget()
-        self.tabs.setStyleSheet(S.tabs())
-        self.tabs.addTab(self.panels["points"], "Points")
-        self.tabs.addTab(self.panels["vars"], "Vars")
-        self.tabs.addTab(self.panels["objects"], "Object")
-        jog = self.panels["jog"]
-        self.tabs.addTab(jog, "Jog")
-        # By widget, not by index: adding a tab must not change the opening page.
-        self.tabs.setCurrentWidget(jog)
-        self.tabs.currentChanged.connect(self._tab_changed)
-        return self.tabs
+    def _build_sidebar(self):
+        """One panel at a time, behind the rail, in a stack rather than tabs.
 
-    def _geometry_changed(self):
-        """The mounting numbers moved, so everything drawn from them is stale."""
-        self.panels["jog"].mode_changed()
+        The tab bar is gone because the rail is the tab bar — and unlike a tab
+        bar it stays put when the panel it names is closed.
+        """
+        stack = QStackedWidget()
+        for panel_id in ("points", "camera", "jog"):
+            stack.addWidget(self.panels[panel_id])
+        stack.setCurrentWidget(self.panels["jog"])
+        return stack
+
+    # ---- the rail, the sidebar, and which edge they are on ---------------
+    def _ui_state(self):
+        ui = self.cell.config.ui
+        panel_id = ui.get("sidebar_panel", "jog")
+        if panel_id not in self.panels:
+            panel_id = "jog"
+        side = "left" if ui.get("sidebar_side") == "left" else "right"
+        return panel_id, bool(ui.get("sidebar_open", True)), side
+
+    def _apply_sidebar(self):
+        """Lay the three pieces out for the current side and open state.
+
+        Called for every change rather than each caller doing its own half of
+        the work: the order of the widgets, the sidebar's width, what the rail
+        is showing and which panel is on top all have to agree, and one place
+        that sets all four cannot leave them disagreeing.
+        """
+        panel_id, is_open, side = self._ui_state()
+
+        # a held jog key must not survive the panel it belongs to going away
+        self.panels["jog"].release()
+
+        for widget in (self.rail, self.sidebar, self.program_page):
+            self.body.removeWidget(widget)
+        order = ([self.rail, self.sidebar, self.program_page] if side == "left"
+                 else [self.program_page, self.sidebar, self.rail])
+        for widget in order:
+            self.body.addWidget(widget, 1 if widget is self.program_page else 0)
+
+        self.sidebar.setCurrentWidget(self.panels[panel_id])
+        self.sidebar.setFixedWidth(S.sx(SIDEBAR_W))
+        self.sidebar.setVisible(is_open)
+        self.rail.show_state(panel_id, is_open, side)
+
         for panel in self.panels.values():
             if hasattr(panel, "refresh"):
                 panel.refresh()
 
+    def _rail_selected(self, panel_id):
+        """An icon press opens that panel, or closes the one already open."""
+        ui = self.cell.config.ui
+        current, is_open, _side = self._ui_state()
+        if panel_id == current and is_open:
+            ui["sidebar_open"] = False
+        else:
+            ui["sidebar_panel"] = panel_id
+            ui["sidebar_open"] = True
+        self._apply_sidebar()
+
+    def _toggle_sidebar(self):
+        ui = self.cell.config.ui
+        _panel, is_open, _side = self._ui_state()
+        ui["sidebar_open"] = not is_open
+        self._apply_sidebar()
+
+    # ---- the window itself ----------------------------------------------
+    def wants_fullscreen(self):
+        return bool(self.cell.config.ui.get("fullscreen", False))
+
+    def show_window(self, fullscreen=None):
+        """Put the panel on screen as large as it is allowed to be.
+
+        Maximised is the default rather than fullscreen: the desktop's dock and
+        top bar stay where the operator can reach them, which is how this panel
+        is used — a terminal is a swipe away and the panel has to be findable
+        again afterwards. Fullscreen is the rail's ⬚ button away for the times
+        the whole screen is wanted.
+
+        Either way it is the window manager that decides the size. The old
+        "resize to the design size and hope" left a 1280x800 window floating in
+        the middle of a 1280x800 screen with its bottom edge under the dock,
+        and a maximise button that had nothing left to give.
+        """
+        if fullscreen is None:
+            fullscreen = self.wants_fullscreen()
+        if fullscreen:
+            self.showFullScreen()
+        else:
+            self.showMaximized()
+        self.rail.show_fullscreen(fullscreen)
+
+    def _toggle_fullscreen(self):
+        """Fill the screen or give the frame back, and remember which."""
+        fullscreen = not self.isFullScreen()
+        self.cell.config.ui["fullscreen"] = fullscreen
+        self.show_window(fullscreen)
+        try:
+            # only the ui block: a window button must not commit geometry
+            self.cell.config.save_ui()
+        except OSError as e:
+            self.log("could not save the layout: %s" % e)
+
+    def keyPressEvent(self, event):
+        # F11 is what every other program on this desktop uses, and a keyboard
+        # is what a developer has when the touchscreen is showing the wrong
+        # thing. The rail button is the operator's way to the same place.
+        if event.key() == Qt.Key_F11:
+            self._toggle_fullscreen()
+            return
+        super().keyPressEvent(event)
+
+    def _swap_sidebar_side(self):
+        """Move the rail and its panel to the other edge, and remember it.
+
+        Which hand reaches the jog keys is the operator's, not the layout's,
+        and an operator who moved them wants them moved tomorrow too — so this
+        is written to cell.yaml rather than held for the session.
+        """
+        ui = self.cell.config.ui
+        _panel, _open, side = self._ui_state()
+        ui["sidebar_side"] = "left" if side == "right" else "right"
+        self._apply_sidebar()
+        try:
+            # only the ui block: the swap must not commit unsaved geometry
+            self.cell.config.save_ui()
+        except OSError as e:
+            self.log("could not save the layout: %s" % e)
+        self.log("jog and the panels moved to the %s" % ui["sidebar_side"])
+
     # ---- shared services the panels call --------------------------------
     def log(self, text):
-        """Safe from any thread — the append happens on the GUI thread."""
+        """Safe from any thread — the append happens on the GUI thread.
+
+        Every line also goes to the terminal. The drawer holds 400 lines and
+        is one line tall until it is opened, so a panel started from a shell —
+        which is how this one is started — would otherwise lose the message
+        that says why a camera did not open, or which arm refused a command,
+        behind whatever came after it.
+        """
         from time import strftime
-        self.log_message.emit("%s  %s" % (strftime("%H:%M:%S"), text))
+        line = "%s  %s" % (strftime("%H:%M:%S"), text)
+        print(line, flush=True)
+        self.log_message.emit(line)
 
     def _append_log(self, line):
         self.msg_box.appendPlainText(line)
-        self.last_message.setText(line)
+        # The drawer is one line tall until it is opened, and a message with
+        # newlines in it — the camera's install instructions, say — would push
+        # the work area up by however many it carries. The rest is in the
+        # history behind Expand, and all of it is on the terminal.
+        self.last_message.setText(line.splitlines()[0])
 
     def attach(self, origin="midpoint"):
         """Freeze the current grip and bring up the coordinated servo loop.
@@ -422,15 +573,6 @@ class MainWindow(QMainWindow):
         self.log("STOP")
 
     # ---- reactions -------------------------------------------------------
-    def _tab_changed(self, _index):
-        # Leaving either jog surface with a button still held must not latch
-        # the command on after the button is no longer visible.
-        self.panels["jog"].release()
-        self.panels["objects"].release()
-        for panel in self.panels.values():
-            if hasattr(panel, "refresh"):
-                panel.refresh()
-
     def _tick(self):
         # Keep the drawing fed whatever is or is not happening. The coordinated
         # loop also publishes, at servo rate, while it is carrying something —
@@ -463,12 +605,12 @@ class MainWindow(QMainWindow):
         # a jog button held while the window loses focus never emits released()
         if event.type() == event.ActivationChange and not self.isActiveWindow():
             self.panels["jog"].release()
-            self.panels["objects"].release()
         super().changeEvent(event)
 
     def closeEvent(self, event):
         self.timer.stop()
         self.executor.stop()
+        self.vision.stop()
         self.stop_coordinator()
         self.cell.disconnect()
         super().closeEvent(event)
@@ -481,7 +623,12 @@ def main():
                         help="UI scale; 1.0 is the 1280x800 panel design size. "
                              "Left out, the panel measures the screen and fits "
                              "itself to it")
-    parser.add_argument("--fullscreen", action="store_true")
+    parser.add_argument("--fullscreen", action="store_true",
+                        help="fill the screen for this run, whatever the "
+                             "saved ui.fullscreen says")
+    parser.add_argument("--windowed", action="store_true",
+                        help="run inside the desktop's window frame for this "
+                             "run, maximised to the work area")
     args = parser.parse_args()
 
     app = QApplication(sys.argv)
@@ -489,11 +636,16 @@ def main():
     palette.setColor(QPalette.Window, QColor("#f4f4f4"))
     app.setPalette(palette)
 
-    # How much room the layout will really have, measured before anything is
-    # built — every widget below asks sx() for its size exactly once, so the
-    # scale has to be settled first.
-    #
-    # Fullscreen gets the screen. Anything else gets availableGeometry, which
+    # Fullscreen or maximised has to be decided here rather than after the
+    # window is built, because it decides how much room the layout has and
+    # every widget below asks sx() for its size exactly once. The saved
+    # preference decides — maximised unless the operator pressed ⬚ — and either
+    # flag overrides it for one run without writing anything back.
+    fullscreen = args.fullscreen or (
+        not args.windowed
+        and CellConfig.load(args.config).ui.get("fullscreen", False))
+
+    # Fullscreen gets the screen. A framed window gets availableGeometry, which
     # is the screen less the desktop's own dock and top bar, less a title bar
     # on top of that: a maximised window keeps its frame inside the work area,
     # so the layout has that much less height than availableGeometry reports
@@ -502,25 +654,19 @@ def main():
     # under-reserving puts the window back off the edge of the screen, which is
     # the whole thing being fixed here.
     screen = app.primaryScreen()
-    area = screen.geometry() if args.fullscreen else screen.availableGeometry()
-    height = area.height() - (0 if args.fullscreen else TITLE_BAR_PX)
+    area = screen.geometry() if fullscreen else screen.availableGeometry()
+    height = area.height() - (0 if fullscreen else TITLE_BAR_PX)
     if args.scale:
         S.set_scale(args.scale)
     else:
         S.fit_to(area.width(), height)
 
     window = MainWindow(args.config)
-    if args.fullscreen:
-        window.showFullScreen()
-    elif S.UI_SCALE < 1.0:
-        # Having had to shrink to fit, take every pixel the desktop will give:
-        # maximised, the window manager fits the frame to the work area, and
-        # what the layout gets over its minimum goes to the jog grid and the
-        # message log rather than to wallpaper.
-        window.showMaximized()
-    else:
-        window.resize(S.sx(S.DESIGN_W), S.sx(S.DESIGN_H))
-        window.show()
+    # Maximised rather than resized to the design size: what the layout gets
+    # over its minimum goes to the jog grid and the message log rather than to
+    # wallpaper, and a window already the size of the screen leaves the
+    # maximise button nothing to do but nothing.
+    window.show_window(fullscreen)
     sys.exit(app.exec_())
 
 

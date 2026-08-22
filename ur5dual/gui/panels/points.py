@@ -12,6 +12,7 @@ covering the numbers.
 """
 
 import numpy as np
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QAbstractItemView, QHBoxLayout, QHeaderView, QInputDialog, QTableWidget,
     QTableWidgetItem, QVBoxLayout, QWidget,
@@ -25,9 +26,9 @@ class PointsPanel(QWidget):
         super().__init__()
         self.app = app
 
-        body = QHBoxLayout(self)
+        body = QVBoxLayout(self)
         body.setContentsMargins(S.sx(6), S.sx(6), S.sx(6), S.sx(6))
-        body.setSpacing(S.sx(8))
+        body.setSpacing(S.sx(6))
         body.addWidget(self._build_table(), 1)
         body.addWidget(self._build_actions(), 0)
 
@@ -39,54 +40,63 @@ class PointsPanel(QWidget):
         v.setSpacing(S.sx(6))
         v.addWidget(S.strip("Named places"))
 
+        # Only the position is on the row. All six numbers need about 45
+        # characters and the sidebar is 320 px wide, so the three that a
+        # taught place is picked by are shown and the rotation is on the
+        # row's tooltip -- clipped numbers would be worse than named ones.
         self.table = QTableWidget(0, 2)
-        self.table.setHorizontalHeaderLabels(
-            ["name", "x y z (mm)   rx ry rz (deg)"])
+        self.table.setHorizontalHeaderLabels(["name", "x y z (mm)"])
         self.table.verticalHeader().hide()
-        self.table.setStyleSheet(f"font-size:{S.fpx(13)}px;")
+        self.table.setStyleSheet(f"font-size:{S.fpx(12)}px;")
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
         v.addWidget(self.table, 1)
         return page
 
     # ---- actions ---------------------------------------------------------
     def _build_actions(self):
+        """Teaching and tidying, under the list.
+
+        The sidebar is the width the jog keys need, and the program must not
+        move when the two swap places -- so this page has the same 320 px and
+        a column of buttons beside the table would leave the table 50 px. They
+        go underneath, in two rows of three.
+        """
         page = QWidget()
-        page.setFixedWidth(S.sx(250))
         v = QVBoxLayout(page)
         v.setContentsMargins(0, 0, 0, 0)
-        v.setSpacing(S.sx(6))
+        v.setSpacing(S.sx(4))
 
-        v.addWidget(S.strip("Teach where the arms are now"))
+        top = QHBoxLayout()
+        top.setSpacing(S.sx(4))
         self.teach_btns = {}
+        # No "Teach obj": an object point is the frame of something both arms
+        # are holding, and nothing on this panel can take hold any more.
         for key, label, callback, colour in (
                 ("A", "Teach A", lambda: self._teach_arm("A"), S.BLUE),
-                ("B", "Teach B", lambda: self._teach_arm("B"), S.BLUE),
-                ("object", "Teach object", self._teach_object, S.PURPLE)):
-            button = S.touch_button(label, colour, height=50, font_px=14)
+                ("B", "Teach B", lambda: self._teach_arm("B"), S.BLUE)):
+            button = S.touch_button(label, colour, height=44, font_px=13)
+            button.setToolTip(
+                "record where %s is now as a named place"
+                % ("the carried object" if key == "object" else "arm " + key))
             button.clicked.connect(callback)
-            v.addWidget(button)
+            top.addWidget(button, 1)
             self.teach_btns[key] = button
+        v.addLayout(top)
 
-        hint = S.caption("An arm point is that arm's TCP in world. An object "
-                         "point is the carried frame, so both arms go back to "
-                         "the same grip.")
-        hint.setWordWrap(True)
-        v.addWidget(hint)
-
-        v.addWidget(S.strip("Library"))
         row = QHBoxLayout()
         row.setSpacing(S.sx(4))
-        for label, callback, colour in (("Delete", self._delete, S.RED),
-                                        ("Save", self._save, S.PURPLE)):
-            button = S.touch_button(label, colour, height=46, font_px=13)
+        for label, callback, colour in (("✕ Delete", self._delete, S.RED),
+                                        ("💾 Save", self._save, S.PURPLE)):
+            button = S.touch_button(label, colour, height=40, font_px=13)
             button.clicked.connect(callback)
             row.addWidget(button, 1)
-        v.addLayout(row)
-
         self.count_lbl = S.caption("")
-        v.addWidget(self.count_lbl)
-        v.addStretch(1)
+        self.count_lbl.setAlignment(Qt.AlignCenter)
+        row.addWidget(self.count_lbl, 1)
+        v.addLayout(row)
         return page
 
     # ---- teaching --------------------------------------------------------
@@ -103,17 +113,6 @@ class PointsPanel(QWidget):
         if name:
             self.app.points.teach_arm(self.app.cell, arm_id, name)
             self.app.log("taught %s from arm %s" % (name, arm_id))
-            self._refresh_everywhere()
-
-    def _teach_object(self):
-        obj = self.app.executor.object
-        if not obj.held:
-            self.app.log("nothing is attached")
-            return
-        name = self._ask_name("%s_%d" % (obj.name, len(self.app.points.points) + 1))
-        if name:
-            self.app.points.teach_object(obj, name)
-            self.app.log("taught %s from the object frame" % name)
             self._refresh_everywhere()
 
     def _delete(self):
@@ -140,11 +139,16 @@ class PointsPanel(QWidget):
         self.table.setRowCount(len(names))
         for row, name in enumerate(names):
             pose = self.app.points.get(name)
-            text = ("%7.1f %7.1f %7.1f    %6.1f %6.1f %6.1f"
+            text = ("%7.1f %7.1f %7.1f"
+                    % (pose[0] * 1000, pose[1] * 1000, pose[2] * 1000))
+            full = ("x y z   %7.1f %7.1f %7.1f  mm\n"
+                    "rx ry rz %6.1f %6.1f %6.1f  deg"
                     % (pose[0] * 1000, pose[1] * 1000, pose[2] * 1000,
                        *np.degrees(pose[3:])))
-            self.table.setItem(row, 0, QTableWidgetItem(name))
-            self.table.setItem(row, 1, QTableWidgetItem(text))
+            for column, value in ((0, name), (1, text)):
+                item = QTableWidgetItem(value)
+                item.setToolTip(full)
+                self.table.setItem(row, column, item)
         self.count_lbl.setText("%d point%s" % (len(names),
                                                "" if len(names) == 1 else "s"))
 
@@ -154,4 +158,3 @@ class PointsPanel(QWidget):
         for arm_id in ("A", "B"):
             self.teach_btns[arm_id].setEnabled(
                 self.app.cell.arms[arm_id].connected)
-        self.teach_btns["object"].setEnabled(self.app.executor.object.held)

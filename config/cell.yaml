@@ -13,6 +13,16 @@
 # is deliberately independent of style, so a calibrated (custom) cell still
 # shows the structure it is bolted to. Set it false for a cell with no mast.
 #
+# ui.sidebar_side puts the icon rail and its panel on the right or the left
+# edge. The rail itself is never hidden, so the way back from a closed sidebar
+# is always on screen; only the panel beside it opens and closes.
+#
+# ui.fullscreen decides whether the panel takes the whole screen or runs in a
+# maximised window with the desktop's dock, top bar and title bar still around
+# it. False is the default: this panel shares its screen with the desktop it is
+# started from. The rail's ⬚ button toggles it (F11 does too) and writes the
+# answer back here; --fullscreen and --windowed override it for one run.
+#
 # motion.backend picks how the 125 Hz coordinated loop talks to the robots:
 #   rtde      ur_rtde servoL/servoJ  (default)
 #   urscript  a streaming URScript program uploaded to each controller
@@ -44,3 +54,38 @@ motion: {backend: urscript, control: joint, allow_uncalibrated_real: true, servo
 calibrated: false
 translation_calibrated: true
 limits: {jog_lin_max: 0.25, jog_ang_max: 1.0, object_lin_speed: 0.05, object_ang_speed: 0.3}
+vision:
+  source: realsense
+  width: 640
+  height: 480
+  fps: 30
+  serial: null
+  warmup: 15
+  sim_plane_z: 1.2
+  auto_size: false
+  box_size: [0.2, 0.1, 0.1]
+  box_sizes:
+  - [0.2, 0.1, 0.1]
+  - [0.2, 0.1, 0.2]
+  - [0.2, 0.05, 0.2]
+  - [0.195, 0.1, 0.2]
+  - [0.1, 0.195, 0.2]
+  - [0.6, 0.4, 0.2]
+  - [0.1, 0.1, 0.2]
+  - [0.1, 0.2, 0.2]
+  roi: null
+  smoothing: 0.2
+  max_reprojection: 4.0
+  max_corner_jump: 35.0
+  confirm_frames: 4
+  hold_frames: 15
+  log_enabled: false
+  log_dir: logs
+  period: 0.0
+  camera_to_world:
+    xyz: [0.0, 0.0, 0.0]
+    rpy: [0.0, 0.0, 0.0]
+  calibrated: false
+  plane_file: config/plane.json
+  max_correction: 0.1
+  max_correction_deg: 30.0

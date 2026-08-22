@@ -8,6 +8,7 @@ capture -> carry -> arm-target chain can be exercised on the geometry alone.
 import math
 import os
 import sys
+import threading
 import time
 
 import numpy as np
@@ -289,7 +290,9 @@ class KinematicArm(FakeArm):
         self.tcp_offset = None
         pose = K.mat_to_pose(UK.fk_tcp(q))
         pose[0] += error                       # where we and it disagree
-        self._state = {"q_actual": q, "tcp_pose": pose}
+        # a still arm feels nothing and is going nowhere; the feed reads both
+        self._state = {"q_actual": q, "tcp_pose": pose,
+                       "qd_actual": [0.0] * 6, "tcp_force": [0.0] * 6}
 
     def state(self):
         return self._state
@@ -327,6 +330,86 @@ if stood_down is not None:
           (said[-1] if said else "")[:70])
     check("and told what it is running instead",
           any("Cartesian targets" in m for m in said))
+
+# ── holding a coupled carry half way through ──────────────────────────────
+print("\nfreeze stands a coupled move still without leaving the servo loop")
+paused_cell = solver_cell(0.0)
+carried = HeldObject("crate").capture(paused_cell, ("A", "B"), "midpoint")
+live_coord = Coordinator(paused_cell, drive_robots=False)
+try:
+    live_coord.start(carried)
+    began = live_coord.current_pose(carried).copy()
+    goal = began + np.array([0.0, 0.0, 0.08, 0, 0, 0])
+    duration = live_coord.command_move(carried, goal, lin_speed=0.02)
+    check("the move is planned over several seconds", duration > 2.0,
+          "%.1f s" % duration)
+
+    time.sleep(0.5)
+    moving = live_coord.current_pose(carried).copy()
+    check("it is under way before the hold",
+          moving[2] - began[2] > 0.002,
+          "%.1f mm" % ((moving[2] - began[2]) * 1000))
+
+    live_coord.freeze()
+    time.sleep(0.05)                       # let one feed cycle notice
+    at_hold = live_coord.current_pose(carried).copy()
+    time.sleep(0.6)
+    still = live_coord.current_pose(carried).copy()
+    check("the box stops where it was", abs(still[2] - at_hold[2]) < 5e-4,
+          "%.2f mm of creep" % ((still[2] - at_hold[2]) * 1000))
+    check("and it stops short of the target rather than at it",
+          goal[2] - still[2] > 0.002,
+          "%.1f mm to go" % ((goal[2] - still[2]) * 1000))
+    check("the servo loop is still running", live_coord.alive)
+    check("the move is still in flight, not finished", live_coord.busy())
+    check("and it says it is frozen", live_coord.frozen)
+
+    live_coord.thaw()
+    check("thawing clears it", not live_coord.frozen)
+    live_coord.wait_done(timeout=30)
+    arrived = live_coord.current_pose(carried).copy()
+    check("it carries on down the same path to the target",
+          abs(arrived[2] - goal[2]) < 1e-3,
+          "%.1f mm short" % ((goal[2] - arrived[2]) * 1000))
+    check("and nothing faulted while it was held", live_coord.error is None,
+          str(live_coord.error))
+finally:
+    live_coord.shutdown()
+
+print("\na hold is not lateness — a frozen move does not time out")
+timing_cell = solver_cell(0.0)
+timed = HeldObject("crate").capture(timing_cell, ("A", "B"), "midpoint")
+timing_coord = Coordinator(timing_cell, drive_robots=False)
+try:
+    timing_coord.start(timed)
+    start_pose = timing_coord.current_pose(timed).copy()
+    # a one-second move, held for longer than the wait would otherwise allow
+    timing_coord.command_move(timed,
+                              start_pose + np.array([0, 0, 0.02, 0, 0, 0]),
+                              lin_speed=0.02)
+    time.sleep(0.3)
+    timing_coord.freeze()
+
+    outcome = []
+
+    def _wait():
+        try:
+            timing_coord.wait_done(timeout=2.0)
+            outcome.append(("done", None))
+        except CouplingError as e:
+            outcome.append(("raised", str(e)))
+
+    waiter = threading.Thread(target=_wait, daemon=True)
+    waiter.start()
+    time.sleep(2.5)          # past the 2 s limit, and all of it frozen
+    check("a wait limited to 2 s has not given up after 2.5 s held",
+          outcome == [], str(outcome))
+    timing_coord.thaw()
+    waiter.join(timeout=30)
+    check("and it finishes once the move is let go",
+          outcome and outcome[0][0] == "done", str(outcome))
+finally:
+    timing_coord.shutdown()
 
 print()
 print("FAILURES: %d" % fail)

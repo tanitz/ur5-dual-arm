@@ -1,16 +1,28 @@
-"""Full-width jog page for arm A, synchronized A+B, and arm B.
+"""Jog page for arm A, synchronized A+B, and arm B.
 
-No target selector stands between the operator and either arm. The three
-targets and all six axes stay visible at once.
+This page used to keep all three targets on screen at once, on the argument
+that a selector can leave an operator pressing a key for the arm they are not
+looking at. That argument has not gone away — it has been paid for instead.
+The page is a 320 px sidebar now, which cannot hold three columns of
+finger-sized keys, so one target shows at a time behind three large buttons.
 
-The A+B column is deliberately world-frame only. "Base" and "tool" name a
-different direction at each robot, so presenting either as one shared motion
+What stops the selector being the hazard it was:
+
+  * the chosen target's button is filled, not merely ticked
+  * the band above the keys is the arm's own colour and names it
+  * the keys themselves carry that tint
+  * switching target releases whatever key is held, so a change of target can
+    never inherit a press meant for the other arm
+
+The A+B column is still deliberately world-frame only. "Base" and "tool" name
+a different direction at each robot, so presenting either as one shared motion
 would be a dangerously ambiguous control.
 """
 
 import math
 
 import numpy as np
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QComboBox, QDialog, QHBoxLayout, QLabel, QVBoxLayout, QWidget,
 )
@@ -30,7 +42,7 @@ WORLD_AXIS_SIGN = (-1.0, 1.0, 1.0)
 
 
 class JogPanel(QWidget):
-    """Three permanent jog targets in the full right-hand tab width."""
+    """One jog target at a time, in the sidebar's width."""
 
     def __init__(self, app):
         super().__init__()
@@ -38,10 +50,13 @@ class JogPanel(QWidget):
         self.frame = ARM_FRAMES[0]
         self.hold_mode = True
         self.preset = 1
+        # which target the keys drive. Only one is on screen at a time.
+        self.target = "AB"
 
         body = QVBoxLayout(self)
         body.setContentsMargins(S.sx(6), S.sx(6), S.sx(6), S.sx(6))
         body.setSpacing(S.sx(5))
+        body.addWidget(self._build_selector(), 0)
         body.addWidget(self._build_controls(), 0)
         body.addWidget(self._build_targets(), 1)
         body.addWidget(self._build_compact_status(), 0)
@@ -49,13 +64,64 @@ class JogPanel(QWidget):
 
         self._relabel()
         self._set_preset(self.preset)
+        self._select_target(self.target)
 
     # ---- layout ---------------------------------------------------------
-    def _build_controls(self):
+    def _build_selector(self):
+        """Which arm the keys drive, as three large buttons.
+
+        Buttons rather than a drop-down: a closed combo shows one line of text
+        and needs a press to reveal what else it could have been, while three
+        buttons show every choice and which one is live without being touched.
+        On a page that moves robots that difference is the whole point.
+        """
         page = QWidget()
         row = QHBoxLayout(page)
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(S.sx(4))
+        self.target_btns = {}
+        for target, label in (("A", "Arm A"), ("AB", "A+B"), ("B", "Arm B")):
+            button = S.touch_button(label, height=38, font_px=14,
+                                    checkable=True)
+            button.clicked.connect(
+                lambda _c=False, t=target: self._select_target(t))
+            row.addWidget(button, 1)
+            self.target_btns[target] = button
+        return page
+
+    def _select_target(self, target):
+        """Show one target's keys, and let go of anything held first.
+
+        Releasing is not tidiness. A key held while the target changes would
+        otherwise carry on driving the arm it was pressed for, from a grid the
+        operator is no longer looking at.
+        """
+        self.release()
+        self.target = target
+        for key, column in self.target_columns.items():
+            column.setVisible(key == target)
+        for key, button in self.target_btns.items():
+            chosen = key == target
+            button.setChecked(chosen)
+            button.setStyleSheet(
+                S.solid(S.ARM_COLOR.get(key, S.GREEN), 14) if chosen
+                else S.pill(14))
+        self._refresh_enabled()
+
+    def _build_controls(self):
+        page = QWidget()
+        outer = QVBoxLayout(page)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(S.sx(4))
+        # two lines rather than one: the combos and the four step presets do
+        # not both fit across a sidebar, and a control squeezed to nothing is
+        # worse than a control on the next line
+        combos = QHBoxLayout()
+        combos.setSpacing(S.sx(4))
+        row = QHBoxLayout()
+        row.setSpacing(S.sx(4))
+        outer.addLayout(combos)
+        outer.addLayout(row)
 
         self.motion_combo = QComboBox()
         self.motion_combo.addItems(["Hold to move", "Step per press"])
@@ -67,21 +133,29 @@ class JogPanel(QWidget):
         ])
         self.frame_combo.currentIndexChanged.connect(self._frame_changed)
         for combo in (self.motion_combo, self.frame_combo):
-            combo.setMinimumHeight(S.sx(40))
+            combo.setMinimumHeight(S.sx(38))
             combo.setStyleSheet(S.combo())
-            row.addWidget(combo, 2)
+            combos.addWidget(combo, 1)
 
-        row.addWidget(S.caption("Step"), 0)
+        # No "Step" caption and no extra weight on the readout: across a
+        # 320 px sidebar those two took the four preset keys down to 29 px,
+        # which is a number on a screen rather than something a finger hits.
+        # The readout says "10 mm" and labels itself.
         self.preset_btns = []
         for i in range(4):
             button = S.touch_button(str(i + 1), height=38, font_px=13)
             button.clicked.connect(lambda _c=False, n=i: self._set_preset(n))
             row.addWidget(button, 1)
             self.preset_btns.append(button)
+        # The readout gets its own line. Sharing the presets' row it was
+        # either 62 px and clipped or wide enough to take the four keys down
+        # to 37, and "30 mm/s · 8.6 deg/s" is not a caption -- it is what the
+        # next press will do.
         self.size_lbl = QLabel("")
+        self.size_lbl.setAlignment(Qt.AlignCenter)
         self.size_lbl.setStyleSheet(
-            f"font-size:{S.fpx(13)}px;color:{S.INK};font-weight:bold;")
-        row.addWidget(self.size_lbl, 2)
+            f"font-size:{S.fpx(12)}px;color:{S.INK};font-weight:bold;")
+        outer.addWidget(self.size_lbl)
         return page
 
     def _build_targets(self):
@@ -90,6 +164,10 @@ class JogPanel(QWidget):
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(S.sx(5))
         self.grids = {}
+        # every target is built, and all but one is hidden. They occupy the
+        # same place, so the keys never move under a finger when the target
+        # changes -- only their colour and their heading do.
+        self.target_columns = {}
 
         for target, title, tint in (
                 ("A", "ARM A", S.ARM_TINT["A"]),
@@ -117,6 +195,7 @@ class JogPanel(QWidget):
                 lambda t=target: self._released(t))
             v.addWidget(grid, 1)
             self.grids[target] = grid
+            self.target_columns[target] = column
             row.addWidget(column, 1)
         return page
 
@@ -207,6 +286,7 @@ class JogPanel(QWidget):
         self.frame = ARM_FRAMES[index]
         self._relabel()
         self._set_preset(self.preset)
+        self._select_target(self.target)
 
     def _motion_changed(self, index):
         self.release()
@@ -366,8 +446,17 @@ class JogPanel(QWidget):
             grid.set_enabled(reasons[target] is None)
         held = self.app.executor.object.held
         self.release_btn.setVisible(held)
+        # a target that cannot be driven should say so on its own button, so
+        # the refusal is where the finger is going rather than only at the
+        # bottom of the page
+        for key, button in self.target_btns.items():
+            button.setEnabled(reasons[key] is None or key == self.target)
         if held:
             self.note.setText(reasons["A"] or "")
+        elif self.target == "AB" and self.frame != "world":
+            self.note.setText("A+B disabled: synchronized jog uses world frame")
+        elif reasons.get(self.target):
+            self.note.setText(reasons[self.target])
         elif self.frame != "world":
             self.note.setText("A+B disabled: synchronized jog uses world frame")
         elif any(reasons.values()):
