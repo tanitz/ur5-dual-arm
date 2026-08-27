@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# What the printed ChArUco board says about the table, and the box on it.
+cd "$(dirname "$(readlink -f "$0")")/.." && exec python3 -m ur5dual.tools.board_check "$@"

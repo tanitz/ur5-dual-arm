@@ -30,8 +30,14 @@ from .detect import DetectionError, OpenBoxDetector
 class DetectionLog:
     """One CSV row per Camera-tab frame, including rejected raw answers."""
 
+    # `surface_height_m` is the column a slide test is read from. Camera Z is
+    # in here too and is not the same question: it moves by the sine of the
+    # surface tilt every time the box is slid along a table it never left,
+    # which on this cell is 88 mm per 100 mm. Logging both is what turns "it
+    # still looks like it changes" into two columns and a number.
     BASE = ["time_iso", "elapsed_s", "frame", "state", "found",
-            "raw_reprojection_px", "depth_center_m", "message"]
+            "raw_reprojection_px", "depth_center_m", "surface_height_m",
+            "floor_height_m", "message"]
     CORNERS = [f"{kind}_{axis}{i}" for kind in ("raw", "filtered")
                for i in range(4) for axis in ("u", "v")]
     POSES = [f"{kind}_{name}" for kind in ("raw", "filtered")
@@ -82,6 +88,10 @@ class DetectionLog:
                                       else "%.6f" % notes["raw_reprojection"]),
             "depth_center_m": ("" if not notes.get("depth_center")
                                else "%.6f" % notes["depth_center"]),
+            "surface_height_m": ("" if notes.get("surface_height") is None
+                                 else "%.6f" % notes["surface_height"]),
+            "floor_height_m": ("" if notes.get("floor_height") is None
+                               else "%.6f" % notes["floor_height"]),
             "message": reading.error or notes.get("reason", ""),
         }
         self._corners(row, "raw", notes.get("raw_corners"))
@@ -232,6 +242,11 @@ class VisionService:
             "max_corner_jump": float(self.config.get("max_corner_jump", 35.0)),
             "confirm_frames": int(self.config.get("confirm_frames", 4)),
             "hold_frames": int(self.config.get("hold_frames", 15)),
+            # The measured surface, so every detection can carry the rim's
+            # height off it rather than leaving camera Z to stand in for one.
+            "surface": self.config.get("surface"),
+            # And the floor under it, where a tape and the IMU have put one.
+            "floor": self.config.get("floor"),
         }
 
     # -- the loop ----------------------------------------------------------

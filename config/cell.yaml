@@ -53,7 +53,8 @@ motion: {backend: urscript, control: joint, allow_uncalibrated_real: true, servo
   max_tcp_force: 400.0, max_pair_drift: 0.004}
 calibrated: false
 translation_calibrated: true
-limits: {jog_lin_max: 0.25, jog_ang_max: 1.0, object_lin_speed: 0.05, object_ang_speed: 0.3}
+limits: {jog_lin_max: 0.25, jog_ang_max: 1.0, max_lin_speed: 0.25, max_ang_speed: 1.0,
+  object_lin_speed: 0.05, object_ang_speed: 0.3}
 vision:
   source: realsense
   width: 640
@@ -66,13 +67,13 @@ vision:
   box_size: [0.2, 0.1, 0.1]
   box_sizes:
   - [0.2, 0.1, 0.1]
+  - [0.201, 0.096, 0.098]
+  - [0.199, 0.079, 0.093]
+  - [0.192, 0.076, 0.097]
   - [0.2, 0.1, 0.2]
   - [0.2, 0.05, 0.2]
   - [0.195, 0.1, 0.2]
   - [0.1, 0.195, 0.2]
-  - [0.6, 0.4, 0.2]
-  - [0.1, 0.1, 0.2]
-  - [0.1, 0.2, 0.2]
   roi: null
   smoothing: 0.2
   max_reprojection: 4.0
@@ -86,6 +87,30 @@ vision:
     xyz: [0.0, 0.0, 0.0]
     rpy: [0.0, 0.0, 0.0]
   calibrated: false
+  surface:
+    normal: [-0.00011667182668404984, -0.8820080292987328, -0.4712343606320009]
+    offset: -0.3282396883339334
+    tilt_deg: 61.88554857536064
+    corners: 12
+    measured: '2026-08-27T09:38:36+07:00'
+  floor: null
+  home_references:
+    box_home:
+      camera_rfh: [0.03453920666929771, 0.4988184793341951, 0.09868452731442673, -0.036418265998371176,
+        0.0034406649368095735, -0.026716980960357142]
+      anchor_world: [-0.559688689204312, 0.09420912624282504, 1.0284694474528906]
+      tools:
+        A: [-0.5501766828721908, 0.1201456404256487, 1.0304905984088983, 0.06502693449183741,
+          2.239744480963783, -2.1923936799985446]
+        B: [-0.5692006955364333, 0.0682726120600014, 1.026448296496883, -1.6369895662648146,
+          0.028535605709214117, 0.040083518648914636]
+      box_size: [0.2, 0.1, 0.1]
+  home_rf_map:
+  - [0.0, -1.0]
+  - [1.0, 0.0]
+  home_tolerance: 0.1
+  home_tolerance_deg: 15.0
   plane_file: config/plane.json
-  max_correction: 0.1
+  plane_log: config/plane_log.json
+  max_correction: 0.28
   max_correction_deg: 30.0

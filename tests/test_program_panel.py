@@ -23,10 +23,15 @@ from PyQt5.QtWidgets import QApplication                  # noqa: E402
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from ur5dual.axes import WORLD_AXIS_SIGN, shown_pose      # noqa: E402
 from ur5dual.cell import Cell                             # noqa: E402
 from ur5dual.config import CellConfig                     # noqa: E402
 from ur5dual.gui.app import MainWindow                    # noqa: E402
+from PyQt5.QtWidgets import QLabel                        # noqa: E402
 from ur5dual.gui.panels.step_edit import StepEditDialog   # noqa: E402
+from ur5dual.program.executor import (                    # noqa: E402
+    MAX_SPEED_PCT, START_SPEED_PCT,
+)
 from ur5dual.program.steps import (                       # noqa: E402
     Program, Step, make_target,
 )
@@ -60,9 +65,10 @@ panel.tick()
 app.processEvents()
 
 
-def edit(step):
+def edit(step, surfaces=None):
     return StepEditDialog(step, window.points, cell=window.cell,
-                          held_object=window.executor.object)
+                          held_object=window.executor.object,
+                          surfaces=surfaces)
 
 
 def _legacy_still_runs():
@@ -112,13 +118,22 @@ def _column(line, index):
 
 live = window.cell.arms["A"].tcp_pose_world()
 check("the position is millimetres",
-      abs(_column(lines[1], 0) - live[0] * 1000) < 0.05,
-      "%s vs %.1f" % (_column(lines[1], 0), live[0] * 1000))
+      abs(_column(lines[1], 0) - shown_pose(live)[0] * 1000) < 0.05,
+      "%s vs %.1f" % (_column(lines[1], 0), shown_pose(live)[0] * 1000))
+# the work area is on world -X, so a raw world x reads negative while the key
+# the operator held to get there is marked X+. The readout follows the key.
+check("x is signed the way the jog key drives it, not the way the world "
+      "frame stores it",
+      abs(_column(lines[1], 0) + WORLD_AXIS_SIGN[0] * -live[0] * 1000) < 0.05,
+      "%s shown for world %.1f" % (_column(lines[1], 0), live[0] * 1000))
+check("and rz is not flipped, because the RZ key is not either",
+      abs(_column(lines[1], 5) - np.degrees(live[5])) < 0.05,
+      "%s vs %.1f" % (_column(lines[1], 5), np.degrees(live[5])))
 check("and the rotation is degrees, not radians",
       abs(_column(lines[1], 3) - np.degrees(live[3])) < 0.05,
       "%s vs %.1f" % (_column(lines[1], 3), np.degrees(live[3])))
 check("the columns line up under the header",
-      lines[1].index("-") > 0 and len(lines[1]) == len(lines[2]),
+      len(lines[1]) == len(lines[2]) == 4 + 6 * 8,
       "%d vs %d" % (len(lines[1]), len(lines[2])))
 
 print("\nrecording takes where the arms already are")
@@ -151,6 +166,21 @@ panel._record("movel")
 check("the speed box is stamped onto what is recorded",
       abs(panel.program.steps[-1].slot("a")["speed"] - 0.080) < 1e-9,
       str(panel.program.steps[-1].slot("a")))
+
+print("\nthe run-speed dial reaches the executor, live")
+check("it comes up at the safe percentage rather than remembering one",
+      panel.run_speed.value() == START_SPEED_PCT
+      and window.executor.speed_pct == START_SPEED_PCT,
+      "%.0f%%" % panel.run_speed.value())
+panel.run_speed.setValue(45)
+check("turning it is enough — nothing has to be pressed",
+      window.executor.speed_pct == 45.0, "%.0f%%" % window.executor.speed_pct)
+panel.run_speed.setValue(400)
+check("and the box will not offer a percentage the executor would clamp",
+      panel.run_speed.value() == MAX_SPEED_PCT
+      and window.executor.speed_pct == MAX_SPEED_PCT,
+      "%.0f%%" % panel.run_speed.value())
+panel.run_speed.setValue(START_SPEED_PCT)
 
 print("\nthe steps with nothing to record go straight in")
 before = len(panel.program.steps)
@@ -371,7 +401,7 @@ buttons = {"Run": panel.run_btn, "Pause": panel.pause_btn,
            "MOVEL": panel.movel_btn, "A": panel.column_btns["a"],
            "B": panel.column_btns["b"], "A+B": panel.column_btns["mirror"],
            "insert": panel.insert_combo, "speed": panel.speed,
-           "＋": panel.add_btn}
+           "run speed": panel.run_speed, "＋": panel.add_btn}
 
 
 def box(widget):
@@ -495,6 +525,70 @@ check("and is taken away while a program is running",
 window.executor.running = False
 panel.tick()
 check("and given back when it stops", panel.movej_btn.isEnabled())
+
+print("\na FIND asks where the box stood, and looks where the cell measures")
+
+
+def _find_names(surfaces, reference=""):
+    dialog = edit(Step("FIND", into="part", reference=reference, timeout=5.0),
+                  surfaces=surfaces)
+    combo = dialog.point_pick
+    said = [w.text() for w in dialog.findChildren(QLabel)]
+    return ([combo.itemText(i) for i in range(combo.count())],
+            " ".join(said))
+
+
+items, said = _find_names(None)
+check("with no map it offers the point library, as it always did",
+      items == [""] + window.points.names(), str(items))
+check("and the label does not claim otherwise",
+      "taught on the Camera tab" not in said)
+
+items, said = _find_names(set())
+check("with the surface as the route and nothing on it yet, the list is "
+      "empty rather than full of places that would be refused at run time",
+      items == [""], str(items))
+check("so it names the procedure that would put something in it",
+      "Create Home Box" in said and "Save arm + object" in said
+      and "appears here immediately" in said)
+check("and says the box's size is a different thing, since that is the "
+      "other field an operator might expect to find here",
+      "not where it was" in said)
+
+items, said = _find_names({"box_home"})
+check("once taught, the name is there to pick",
+      items == ["", "box_home"], str(items))
+check("and the label says which library it came from",
+      "taught on the Camera tab, not a point" in said)
+
+print("\na column can hold the box instead of naming a place")
+_move = Step("MOVE", link="solo",
+             a=make_target(stance="part", offset=[0, 0, 0.05, 0, 0, 0],
+                           frame="world", motion="movel"))
+_dialog = edit(_move)
+_col = _dialog.columns["a"] if hasattr(_dialog, "columns") else None
+if _col is None:
+    _col = _dialog.findChildren(type(_dialog.arm_edits["A"]))[0] \
+        if hasattr(_dialog, "arm_edits") else None
+check("a name the column's list does not have is kept, not dropped",
+      _col is not None and _col.stance_combo.currentText() == "part",
+      "" if _col is None else _col.stance_combo.currentText())
+check("the editor reads a hold column back as one",
+      _col is not None and _col.target_combo.currentText() == "at box + offset",
+      "" if _col is None else _col.target_combo.currentText())
+if _col is not None:
+    check("with the hold row showing and the correction row hidden — "
+          "carrying a hold by a correction would move it twice",
+          _col.rows["hold"].isVisibleTo(_col)
+          and not _col.rows["correct"].isVisibleTo(_col))
+    check("and it comes back out unchanged",
+          _col.get_target().get("stance") == "part"
+          and _col.get_target().get("correct_by") is None,
+          str(_col.get_target()))
+
+items, _said = _find_names({"box_home"}, reference="from_an_older_map")
+check("a name the map no longer knows is kept rather than silently dropped",
+      "from_an_older_map" in items, str(items))
 
 window.close()
 print()

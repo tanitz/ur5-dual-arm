@@ -29,7 +29,7 @@ sys.path.insert(0, REPO_ROOT)
 
 from ur5dual.robot.backends import BackendError                     # noqa: E402
 from ur5dual.cell import Cell                                 # noqa: E402
-from ur5dual.config import ARM_IDS, DEFAULT_PATH, CellConfig  # noqa: E402
+from ur5dual.config import ARM_IDS, DEFAULT_PATH, CellConfig, in_repo  # noqa: E402
 from ur5dual.coupling import Coordinator, CouplingError       # noqa: E402
 from ur5dual.gui import style as S                            # noqa: E402
 from ur5dual.gui.panels.jog import JogPanel                   # noqa: E402
@@ -39,7 +39,7 @@ from ur5dual.gui.panels.program import ProgramPanel           # noqa: E402
 from ur5dual.gui.widgets.rail import IconRail                 # noqa: E402
 from ur5dual.program.executor import Executor                 # noqa: E402
 from ur5dual.program.steps import PointLibrary                # noqa: E402
-from ur5dual.vision.planar import PlaneFile                    # noqa: E402
+from ur5dual.vision.planar import PlaneFile, sized_path        # noqa: E402
 from ur5dual.vision.service import VisionService              # noqa: E402
 
 # a correctly configured arm reads only a few newtons at rest
@@ -101,9 +101,8 @@ class MainWindow(QMainWindow):
         # there yet loads as an empty one; a file that is there and unreadable
         # is worth stopping for, because the alternative is a cell that
         # quietly measures the box a different way than it was set up to.
-        self.surface = PlaneFile.load(self.cell.config.vision.get("plane_file"))
-        self.executor.surface = self.surface
-        self.log("surface: %s" % self.surface.description)
+        self.surface = None
+        self.reload_surface()
         self.coordinator_start_error = None
         self.mode = "real"
         self.grip_output = 0
@@ -133,6 +132,29 @@ class MainWindow(QMainWindow):
             self._refresh_connect_buttons()
 
     # ---- layout ----------------------------------------------------------
+    def surface_path(self):
+        """The plane file for the box the cell is set to, not just *a* file.
+
+        Derived rather than configured, so that changing the crate on the
+        Camera tab changes which map is in use with nothing else to remember.
+        """
+        return sized_path(in_repo(self.cell.config.vision.get("plane_file")),
+                          self.cell.config.vision.get("box_size"))
+
+    def reload_surface(self, store=None):
+        """Take up a map or a reference that was just fitted or taught.
+
+        The executor is handed the same object rather than a path, so a
+        program run straight after the fit measures against what is on screen
+        — and does not need the panel restarted to notice. Called with nothing
+        it reads the file for whatever box the cell is now set to, which is
+        what a change of crate does.
+        """
+        self.surface = store or PlaneFile.load(self.surface_path())
+        self.executor.surface = self.surface
+        self.log("surface: %s" % self.surface.description)
+        return self.surface
+
     def _build(self):
         self.safety_bar = self._build_safety_bar()
         self.panels = {

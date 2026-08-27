@@ -26,12 +26,14 @@ import time
 
 import numpy as np
 
+from ..axes import shown_xyz
 from ..coupling import (
     Coordinator, CouplingError, DRIFT_HARD_MULTIPLE, FIGHT_FORCE, HeldObject,
     limit_uncalibrated_rotation,
 )
 from ..geometry.kinematics import (
-    inv, mat_to_pose, pose_distance, pose_to_mat, xyz_rpy_to_mat,
+    inv, mat_to_pose, pose_distance, pose_to_mat,
+    xyz_rpy_to_mat,
 )
 from .steps import (
     CONTROL_KINDS, FOUND_SUFFIX, Program, apply_offset, resolve_target,
@@ -49,6 +51,27 @@ POLL_PERIOD = 0.02       # s between reads while waiting on an input
 # may run — every arm move resets it — it is what turns `top: jump top` from a
 # hung panel into a message.
 CONTROL_SPIN_LIMIT = 20000
+
+# The speed dial, as a percentage of what the cell may do — `limits.max_*` for
+# a line one arm runs by itself, `limits.object_*` for one that moves a
+# workpiece held by both. 100 is the cell flat out.
+#
+# It comes up at START_SPEED_PCT every launch and is never written to disk, on
+# purpose. A dial that remembers is a dial that comes back at whatever the last
+# shift left it on, and the failure that matters is the one where somebody
+# turned it up to prove a cycle time, closed the panel, and the next person to
+# press Run gets that speed on a program they have not seen move.
+MIN_SPEED_PCT = 1.0
+MAX_SPEED_PCT = 100.0
+START_SPEED_PCT = 10.0
+
+
+def _off_home_rfh(was, now, yaw, tilt):
+    """Right/forward/height difference in the frame shown on the camera card."""
+    delta = now[:3, 3] - was[:3, 3]
+    return ("R%+.1f F%+.1f H%+.1f mm, yaw%+.1f tilt %.1f deg"
+            % (delta[0] * 1000, delta[1] * 1000, delta[2] * 1000,
+               np.degrees(yaw), np.degrees(tilt)))
 
 
 class ProgramError(RuntimeError):
@@ -81,6 +104,12 @@ class Executor:
         # what FIND writes: rigid corrections, kept apart from the numbers so
         # `IF count > 3` can never be handed a pose to compare
         self.poses = {}
+        # and, when the hold was taught as a distance from the box rather than
+        # as a place in the cell, where that hold is now
+        self.stances = {}
+
+        # How fast this run goes, for every line in it. See START_SPEED_PCT.
+        self.speed_pct = START_SPEED_PCT
 
         self.thread = None
         self._pause = threading.Event()
@@ -145,8 +174,18 @@ class Executor:
             if step.kind == "LABEL" and step.enabled:
                 labels[(step.get("name") or "").strip()] = i
 
+        # Say it out loud before anything moves. The dial is one number for
+        # the whole run and it is the difference between a crawl and a lunge,
+        # so the log has to show what it was set to, not just that Run was
+        # pressed.
+        self.log("speed %.0f%% — up to %.0f mm/s solo, %.0f mm/s carried"
+                 % (self.speed_pct,
+                    self._speed("max_lin_speed") * 1000,
+                    self._speed("object_lin_speed") * 1000))
+
         self.vars = {}
         self.poses = {}
+        self.stances = {}
         self._stop.clear()
         self._pause.clear()
         self.running = True
@@ -337,6 +376,16 @@ class Executor:
             raise ProgramError("arm %s is not connected" % arm_id)
         return arm
 
+    def _stances_for(self, arm_id):
+        """The holds this arm has, by the name the FIND that found them used.
+
+        Selecting the arm here rather than inside `resolve_target` keeps that
+        function what it is — a name and a place — and puts the one thing that
+        knows which arm a column drives in the one place that already does.
+        """
+        return {name: held[arm_id] for name, held in self.stances.items()
+                if arm_id in held}
+
     def _correction_for(self, target):
         """The rigid transform a target asks to be carried by, or None.
 
@@ -365,16 +414,31 @@ class Executor:
         return resolve_target(target, self.points,
                               current=arm.tcp_matrix_world(),
                               base=arm.base_matrix(),
-                              correction=self._correction_for(target))
+                              correction=self._correction_for(target),
+                              stances=self._stances_for(arm_id))
 
     def _check_reachable(self, arm_id, pose_world):
         reachable, why = self.cell.check_reachable(arm_id, pose_world)
         if not reachable:
             raise ProgramError(why)
 
-    def _speed(self, target, default_key="object_lin_speed"):
-        return float((target or {}).get("speed")
-                     or self.cell.config.limits[default_key])
+    def set_speed_pct(self, pct):
+        """Turn the dial, clamped. Safe to call while a program is running:
+        the next line sent picks it up, the one already on the wire does not."""
+        self.speed_pct = max(MIN_SPEED_PCT, min(MAX_SPEED_PCT, float(pct)))
+        return self.speed_pct
+
+    def _speed(self, ceiling_key):
+        """What this run may ask for, in m/s or rad/s.
+
+        A percentage of the cell's ceiling, not of the speed stamped on the
+        line. That field is still read, written and saved -- a program keeps
+        the pace it was taught at -- but the dial is what the arms are given,
+        so one number governs a whole run and a program taught at a crawl and
+        one taught at speed behave the same way when it is turned down.
+        """
+        return (self.speed_pct / 100.0
+                * float(self.cell.config.limits[ceiling_key]))
 
     # -- MOVE --------------------------------------------------------------
     def _move(self, step):
@@ -415,9 +479,9 @@ class Executor:
             the configuration it is in — which is one it was already passing
             through.
             """
+            speed = self._speed("max_lin_speed")
             for arm_id, (pose, target) in plan.items():
                 arm = self.cell.arms[arm_id]
-                speed = self._speed(target)
                 if target.get("motion", "movej") == "movel":
                     arm.movel_world(pose, vel=speed)
                 else:
@@ -462,10 +526,9 @@ class Executor:
         for a in arm_ids:
             self._arm(a)
 
-        ceiling = float(self.cell.config.limits["object_lin_speed"])
-        speed = min(self._speed(target), ceiling)
-        if self._speed(target) > ceiling:
-            self.log("     pair speed capped at %.0f mm/s" % (ceiling * 1000))
+        # Both arms are pushing the same workpiece, so 100% here is the
+        # coupled-carry ceiling rather than what one arm could do alone.
+        speed = self._speed("object_lin_speed")
 
         plan = {}
         for a in arm_ids:
@@ -537,8 +600,10 @@ class Executor:
             raise ProgramError("nothing is attached")
         target = step.slot("obj")
         kind = target_kind(target)
-        lin_speed = target.get("lin_speed")
-        ang_speed = target.get("ang_speed")
+        # Same as a pair line: the object between the grippers sets what
+        # 100% means, not what either arm could manage on its own.
+        lin_speed = self._speed("object_lin_speed")
+        ang_speed = self._speed("object_ang_speed")
         frame = target.get("frame", "world")
         pivot = target.get("pivot")
 
@@ -577,9 +642,8 @@ class Executor:
         _d_t, d_r = pose_distance(self.coordinator.current_pose(self.object),
                                   pose_world)
         if len(self.object.arm_ids) > 1 and not self.simulate:
-            speed = float(ang_speed or self.cell.config.limits["object_ang_speed"])
             ang_speed, refusal = limit_uncalibrated_rotation(
-                d_r, speed, self.cell.config.calibrated)
+                d_r, ang_speed, self.cell.config.calibrated)
             if refusal:
                 raise ProgramError(refusal)
         self.coordinator.move_object(self.object, pose_world, lin_speed, ang_speed)
@@ -656,17 +720,35 @@ class Executor:
                               placed.get("rpy", [0.0] * 3))
 
     def taught_on_surface(self):
-        """The names a plane file holds, or None when there is no map.
+        """The names a plane file holds, or None when points are the answer.
 
         None is not "none taught". It is "this cell does not read the box off
         a surface", which is what sends a FIND's reference to the point
         library instead, and the two must not be confused: a cell with a map
         and nothing taught on it has to say so rather than quietly look
         somewhere else.
+
+        The branch is the same one `_find` takes at run time, and has to be:
+        an editor that offers names a run would refuse is an editor that lets
+        somebody finish a program that cannot start. A cell with no map and no
+        camera placement can still offer explicitly taught box-home names:
+        those use the installation's small planar axis map instead.
         """
-        if self.surface is None or not self.surface.ready:
+        if self.surface is not None and self.surface.ready:
+            return set(self.surface.references)
+        if self.cell.config.vision.get("calibrated"):
             return None
-        return set(self.surface.references)
+        current = self.cell.config.vision.get("box_size")
+        names = set()
+        for name, record in (
+                self.cell.config.vision.get("home_references") or {}).items():
+            taught = record.get("box_size") if isinstance(record, dict) else None
+            if not taught or not current or (
+                    len(taught) == len(current)
+                    and max(abs(float(a) - float(b))
+                            for a, b in zip(taught, current)) <= 0.001):
+                names.add(name)
+        return names
 
     def _find(self, step):
         """Look for the box, and work out how far it has moved.
@@ -689,7 +771,11 @@ class Executor:
                              box that can tilt needs, and what a placement
                              this package measures to about 9 mm costs.
 
-        A cell with neither is refused. It used to run the second one against
+            box home         the cell's known planar axis mapping carries the
+                             saved pre-pick TCP with camera X/Y and box yaw.
+                             Robot Z stays at its taught height.
+
+        A cell with none of these is refused. It used to run the second one against
         an identity transform, which puts every detection in the camera's own
         frame and produces a correction that is confidently wrong — caught, if
         at all, by `max_correction` noticing the size of it.
@@ -698,6 +784,7 @@ class Executor:
         reference = (step.get("reference") or "").strip()
         found_var = into + FOUND_SUFFIX
         self.poses.pop(into, None)
+        self.stances.pop(into, None)
         self.vars[found_var] = 0.0
 
         if self.vision is None:
@@ -715,14 +802,28 @@ class Executor:
                      "to a quarter, so a pick that cares which way round it "
                      "is will be wrong one time in two")
 
+        said = None      # a branch may say the whole line itself
         if self.surface is not None and self.surface.ready:
             correction, where = self._on_surface(reference, reading.detection)
             note = "  (corners fit %.1f mm)" % (where.fit_error * 1000)
+            # A hold taught as a distance from the box needs no correction of
+            # its own — carried to where the box is now, it *is* the answer.
+            if self.surface.stance(reference):
+                self.stances[into] = self.surface.stance_world(reference, where)
+                note += ", held by %s" % "+".join(
+                    sorted(self.stances[into]))
         elif self.cell.config.vision.get("calibrated"):
             now = reading.detection.matrix_in(self._camera_to_world())
             was = pose_to_mat(self.points.get(reference))
             correction = now @ inv(was)
             note = ""
+        elif reference in (self.cell.config.vision.get("home_references") or {}):
+            correction, fixed, seen_off = self._at_fixed_home(
+                reference, reading.detection, reading.frame)
+            self.stances[into] = fixed
+            note = ""
+            said = ("%s moved from %s: %s" %
+                    (into, reference, seen_off))
         else:
             raise ProgramError(
                 "this cell cannot turn a detection into a place in itself: it "
@@ -734,10 +835,126 @@ class Executor:
         self._check_correction(correction, into)
         self.poses[into] = correction
         self.vars[found_var] = 1.0
-        shift = mat_to_pose(correction)
-        self.log("     %s moved %+.1f %+.1f %+.1f mm, turned %+.1f deg%s"
-                 % (into, shift[0] * 1000, shift[1] * 1000, shift[2] * 1000,
-                    np.degrees(np.linalg.norm(shift[3:])), note))
+        if said is None:
+            shift = mat_to_pose(correction)
+            moved = shown_xyz(shift)
+            said = ("%s moved %+.1f %+.1f %+.1f mm, turned %+.1f deg%s"
+                    % (into, moved[0] * 1000, moved[1] * 1000,
+                       moved[2] * 1000,
+                       np.degrees(np.linalg.norm(shift[3:])), note))
+        self.log("     " + said)
+
+    def _at_fixed_home(self, reference, detection, frame):
+        """Carry a taught TCP by the same R/F/H pose shown under the camera."""
+        record = (self.cell.config.vision.get("home_references") or {}).get(
+            reference) or {}
+        try:
+            was = pose_to_mat(record["camera_rfh"])
+            tools = {str(arm): pose_to_mat(pose)
+                     for arm, pose in record["tools"].items()}
+        except (KeyError, TypeError, ValueError) as exc:
+            if "camera_rfh" not in record:
+                raise ProgramError(
+                    "fixed home %r uses old lens coordinates — recreate it "
+                    "with Camera > Create Home Box" % reference)
+            raise ProgramError(
+                "fixed home reference %r is incomplete: %s"
+                % (reference, exc))
+        taught_size = record.get("box_size")
+        current_size = self.cell.config.vision.get("box_size")
+        if taught_size and current_size:
+            off = max(abs(float(a) - float(b))
+                      for a, b in zip(taught_size, current_size))
+            if off > 0.001:
+                raise ProgramError(
+                    "fixed home %r was taught with a %s mm box, but the "
+                    "camera is set to %s mm"
+                    % (reference,
+                       "x".join("%.0f" % (float(v) * 1000)
+                                for v in taught_size),
+                       "x".join("%.0f" % (float(v) * 1000)
+                                for v in current_size)))
+        # Imported here so programs without FIND do not depend on OpenCV.
+        from ..vision.detect import image_relative_rotation, image_relative_xyz
+
+        vision = self.cell.config.vision
+        seen_xyz = image_relative_xyz(
+            detection, frame, vision.get("surface"), vision.get("floor"))
+        seen_rotation = image_relative_rotation(
+            detection, vision.get("surface"), vision.get("floor"))
+        if seen_xyz is None or seen_rotation is None:
+            raise ProgramError(
+                "FIND needs camera R/F/H — run Camera > Measure Surface + Box")
+        seen = np.eye(4)
+        seen[:3, :3] = seen_rotation
+        seen[:3, 3] = seen_xyz
+        rfh_delta = seen[:3, 3] - was[:3, 3]
+        try:
+            axis_map = np.asarray(self.cell.config.vision.get(
+                "home_rf_map", [[0.0, -1.0], [1.0, 0.0]]),
+                dtype=float).reshape(2, 2)
+        except (TypeError, ValueError) as exc:
+            raise ProgramError("vision.home_rf_map must be a 2x2 matrix: %s"
+                               % exc)
+        was_axis = axis_map @ was[:2, 0]
+        seen_axis = axis_map @ seen[:2, 0]
+        if min(np.linalg.norm(was_axis), np.linalg.norm(seen_axis)) < 1e-6:
+            raise ProgramError(
+                "box long axis cannot be read through vision.home_rf_map")
+        was_yaw = np.arctan2(was_axis[1], was_axis[0])
+        seen_yaw = np.arctan2(seen_axis[1], seen_axis[0])
+        # A rectangle is the same opening after half a turn.  Take the nearer
+        # equivalent so a corner-label swap cannot command a 180 degree move.
+        yaw = float((seen_yaw - was_yaw + np.pi / 2) % np.pi - np.pi / 2)
+        height_error = abs(float(rfh_delta[2]))
+        normal_dot = float(np.clip(
+            was[:3, 2] @ seen[:3, 2], -1.0, 1.0))
+        tilt = float(np.arccos(normal_dot))
+        linear_limit = float(
+            self.cell.config.vision.get("home_tolerance", 0.010))
+        angular_limit = np.radians(float(
+            self.cell.config.vision.get("home_tolerance_deg", 3.0)))
+        if height_error > linear_limit or tilt > angular_limit:
+            raise ProgramError(
+                "box changed height %.1f mm / tilted %.1f deg from home %r — "
+                "%s"
+                % (height_error * 1000, np.degrees(tilt), reference,
+                   _off_home_rfh(was, seen, yaw, tilt)))
+        if not tools:
+            raise ProgramError(
+                "fixed home %r has no saved arm pose" % reference)
+
+        world_delta = np.array([*(axis_map @ rfh_delta[:2]), 0.0],
+                               dtype=float)
+        anchor = record.get("anchor_world")
+        if anchor is None:
+            # References saved before anchor_world was introduced remain
+            # usable.  One TCP is the box-home point; two TCPs use their
+            # midpoint, the same rule used by the teaching dialog now.
+            anchor = np.mean([tool[:3, 3] for tool in tools.values()], axis=0)
+        try:
+            anchor = np.asarray(anchor, dtype=float).reshape(3)
+        except ValueError as exc:
+            raise ProgramError("fixed home %r has an invalid anchor: %s"
+                               % (reference, exc))
+
+        cos_yaw, sin_yaw = np.cos(yaw), np.sin(yaw)
+        rotation = np.array([
+            [cos_yaw, -sin_yaw, 0.0],
+            [sin_yaw, cos_yaw, 0.0],
+            [0.0, 0.0, 1.0],
+        ])
+        correction = np.eye(4)
+        correction[:3, :3] = rotation
+        # C carries the taught home anchor to anchor + world_delta, so it is
+        # valid both for the saved stance and for targets using correct_by.
+        correction[:3, 3] = anchor + world_delta - rotation @ anchor
+        carried = {arm: correction @ tool for arm, tool in tools.items()}
+        robot = shown_xyz(world_delta)
+        return correction, carried, (
+            "%s → robot X%+.1f Y%+.1f mm"
+            % (_off_home_rfh(was, seen, yaw, tilt),
+               robot[0] * 1000, robot[1] * 1000))
 
     def _on_surface(self, reference, detection):
         """The correction from where the box sits on its surface.

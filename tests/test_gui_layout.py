@@ -1,5 +1,6 @@
 """The C1 jog layout and its routing, without a display or robots."""
 
+import math
 import os
 import sys
 import tempfile
@@ -14,10 +15,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from PyQt5.QtCore import Qt                    # noqa: E402
 from PyQt5.QtWidgets import QApplication  # noqa: E402
 
+from ur5dual.axes import WORLD_AXIS_SIGN   # noqa: E402
 from ur5dual.cell import Cell             # noqa: E402
 from ur5dual.config import CellConfig     # noqa: E402
 from ur5dual.gui import style as S        # noqa: E402
 from ur5dual.gui.app import MainWindow    # noqa: E402
+from ur5dual.geometry.kinematics import mat_to_pose as _mat_to_pose  # noqa: E402
+from ur5dual.geometry.kinematics import pose_to_mat as _pose_to_mat  # noqa: E402
+from ur5dual.program.steps import Step                    # noqa: E402
+from ur5dual.tools.plane_fit import PlaneFitSession       # noqa: E402
+from ur5dual.vision.planar import PlaneFile, rim_corners  # noqa: E402
 
 
 fail = 0
@@ -45,6 +52,14 @@ config.path = os.path.join(tempfile.mkdtemp(prefix="ur5dual-layout-"),
 # would answer them with whatever is in front of it — as well as being taken
 # away from whichever panel is actually using it.
 config.vision["source"] = "sim"
+config.vision["home_references"] = {}
+# The surface checks below press Fit and Teach, which write files. Left at
+# their defaults those are the repo's own config/plane.json and plane_log.json
+# — the map the cell actually runs on — so they are pointed at a scratch
+# directory for the same reason cell.yaml is.
+_surface_dir = tempfile.mkdtemp(prefix="ur5dual-surface-")
+config.vision["plane_file"] = os.path.join(_surface_dir, "plane.json")
+config.vision["plane_log"] = os.path.join(_surface_dir, "plane_log.json")
 # Nor does it inherit the box an operator taught on the real cell: a point
 # tapped on a tote at the far side of a room is not on the simulated box, and
 # the panel would rightly report that it is not — a true answer to a question
@@ -261,10 +276,53 @@ check("Live reads the camera and finds the simulated box",
 check("and while it runs the button offers to stop it",
       cam.live_btn.text().endswith("Stop") and cam.live_btn.isChecked(),
       cam.live_btn.text())
-check("the result shows all six pose components",
-      "6D POSE" in cam.found_lbl.text()
-      and "XYZ mm" in cam.found_lbl.text()
-      and "RPY deg" in cam.found_lbl.text(), cam.found_lbl.text())
+check("the result shows all six pose components, and which frame they are in",
+      "XYZ mm" in cam.found_lbl.text()
+      and "RPY deg" in cam.found_lbl.text()
+      and "camera R/F/H" in cam.found_lbl.text(), cam.found_lbl.text())
+_tall = cam.found_lbl.height()
+check("and the block is five lines whether or not the size check or the "
+      "surface has anything to say — nothing under it walks down the panel",
+      len(cam.found_lbl.text().split("\n")) == 5
+      and cam.found_lbl.height() == _tall
+      and cam.setup_lbl.height() == cam.setup_lbl.minimumHeight(),
+      "%d lines, %d px" % (len(cam.found_lbl.text().split("\n")), _tall))
+check("one of them answers the height question camera Z is misread as, "
+      "and says so even on a cell whose surface has never been measured",
+      "height" in cam.found_lbl.text(),
+      cam.found_lbl.text().split("\n")[2])
+
+# Uncalibrated, the numbers above are right/forward/height relative to the
+# camera and its measured surface.  Once calibrated the full PnP pose is
+# carried into world instead, because robot world and camera R/F/H do not
+# share an origin or yaw.
+# Once `camera_to_world` has been solved they are the frame the arms are
+# taught in, and the label has to follow them — a world reading under a
+# "camera frame" label, or the reverse, is the one mistake here that looks
+# exactly like a correct answer.
+_camera_xyz = cam.app.vision.latest.detection.centre * 1000
+_vision = cam.app.cell.config.vision
+_vision["camera_to_world"] = {"xyz": [1.0, 0.0, 0.5], "rpy": [0.0, 0.0, 0.0]}
+_vision["calibrated"] = True
+cam.tick()
+_world_line = cam.found_lbl.text().split("\n")[0]
+_world_xyz = [float(v) for v in _world_line.split()[2:5]]
+check("a calibrated cell reads the box out where the arms live, not where "
+      "the lens does",
+      "world" in _world_line and "camera frame" not in _world_line,
+      _world_line)
+check("and the numbers are the camera's, carried through camera_to_world — "
+      "X in the sign the jog keys count in, like every other world readout",
+      abs(_world_xyz[0] - WORLD_AXIS_SIGN[0] * (_camera_xyz[0] + 1000)) < 0.2
+      and abs(_world_xyz[2] - (_camera_xyz[2] + 500)) < 0.2,
+      "%s -> %s" % (_camera_xyz, _world_xyz))
+_vision["calibrated"] = False
+_vision["camera_to_world"] = {"xyz": [0.0, 0.0, 0.0], "rpy": [0.0, 0.0, 0.0]}
+cam.tick()
+check("and an uncalibrated cell goes back to saying camera R/F/H, rather "
+      "than dressing an identity transform up as a world answer",
+      "camera R/F/H" in cam.found_lbl.text().split("\n")[0],
+      cam.found_lbl.text().split("\n")[0])
 painted = cam.view.pixmap()
 check("and draws the picture the detector was handed",
       painted is not None and not painted.isNull())
@@ -279,12 +337,181 @@ check("the old target and HSV detector controls are gone",
       not any(hasattr(cam, name) for name in
               ("target_btn", "clear_target_btn", "colour_btn", "sample_btn",
                "hsv_box", "sliders")))
-check("the wall depth and the search window are still stated",
-      "mm deep" in cam.setup_lbl.text()
-      and "whole picture" in cam.setup_lbl.text(), cam.setup_lbl.text())
+check("the wall depth and the search window are still stated, on one line",
+      "wall" in cam.setup_lbl.text()
+      and "whole picture" in cam.setup_lbl.text()
+      and "\n" not in cam.setup_lbl.text(), cam.setup_lbl.text())
 check("and depth is reported as a check on the size that was typed",
       "size check" in cam.found_lbl.text(),
       cam.found_lbl.text().split("\n")[-1])
+
+
+print("\nthe home-box popup")
+check("the old inline surface workflow is gone",
+      not any(hasattr(cam, name) for name in
+              ("teach_ref_btn", "drop_btn", "ref_combo", "surface_lbl")))
+check("one explicit button opens the replacement workflow",
+      cam.home_box_btn.text() == "Create Home Box"
+      and "gripper" in cam.home_box_btn.toolTip(),
+      cam.home_box_btn.text())
+check("surface and box measurement has its own guided workflow",
+      "Surface" in cam.surface_btn.text()
+      and "surface" in cam.surface_btn.toolTip().lower(),
+      cam.surface_btn.text())
+cam.surface_btn.click()
+for _ in range(10):
+    app.processEvents()
+    cam.tick()
+    time.sleep(0.01)
+surface_dialog = cam.surface_dialog
+check("the replacement popup stages the box before the board",
+      surface_dialog.isVisible()
+      and surface_dialog.box_btn.text() == "1 Capture Box"
+      and surface_dialog.board_btn.text() == "2 Capture Surface",
+      surface_dialog.status.text())
+check("and the measurement is saved back into the main GUI workflow",
+      surface_dialog.apply_btn.text() == "Apply + Save"
+      and not hasattr(surface_dialog, "jog_panel"))
+surface_dialog.close()
+check("without a full coordinate-frame calibration it offers a camera R/F/H "
+      "box home instead of refusing to save",
+      "camera R/F/H box home" in cam.home_box_lbl.text(),
+      cam.home_box_lbl.text())
+
+cam._open_home_box()
+for _ in range(30):
+    app.processEvents()
+    cam.tick()
+    if cam.home_box_dialog.camera_view.pixmap() is not None:
+        break
+    time.sleep(0.02)
+fixed_dialog = cam.home_box_dialog
+fixed_dialog.name_edit.setText("fixed_home")
+fixed_dialog.jog_panel._select_target("AB")
+fixed_dialog._save()
+check("saving without calibration creates a FIND reference immediately",
+      window.executor.taught_on_surface() == {"fixed_home"}
+      and "fixed_home" in config.vision["home_references"]
+      and "camera_rfh" in config.vision["home_references"]["fixed_home"]
+      and "fixed_home" in CellConfig.load(config.path).vision[
+          "home_references"],
+      fixed_dialog.status.text())
+check("the uncalibrated save is clearly identified as a camera R/F/H home",
+      "camera R/F/H box home" in fixed_dialog.status.text(),
+      fixed_dialog.status.text())
+fixed_dialog.close()
+
+RIM = config.vision["sim_plane_z"] - 0.20
+GRIP = {"A": (0.012, 0.0), "B": (-0.011, 0.0)}
+_real_tcp = {a: arm.tcp_matrix_world for a, arm in window.cell.arms.items()}
+
+
+def _hold_like(x, y, yaw):
+    for arm_id, (gx, gy) in GRIP.items():
+        cos, sin = math.cos(yaw), math.sin(yaw)
+        # turned with the box, because a gripper with hold of it is
+        pose = _pose_to_mat([x + cos * gx - sin * gy,
+                             y + sin * gx + cos * gy, RIM, 0, 0, yaw])
+        window.cell.arms[arm_id].tcp_matrix_world = (
+            lambda held=pose: held.copy())
+
+
+# Build the independent surface calibration that the one-press reference
+# teaching consumes. This is cell setup, not part of the home-box popup.
+CYCLES = [(-0.05, -0.03, 0.0), (0.05, -0.03, math.radians(14)),
+          (0.04, 0.04, math.radians(-11)), (-0.04, 0.03, math.radians(20))]
+session = PlaneFitSession(config.vision["box_size"])
+window.vision.start()
+for _x, _y, _yaw in CYCLES:
+    window.vision.camera.place(centre=(_x, -_y), yaw=-_yaw)
+    _hold_like(_x, _y, _yaw)
+    session.ready({arm_id: arm.tcp_matrix_world()
+                   for arm_id, arm in window.cell.arms.items()},
+                  name="calibration")
+    window.vision.refit()
+    session.look(window.vision.fresh(3.0).detection.corners)
+store, _map, _offset = session.taught_from_cycles(
+    "calibration", window.surface_path(), height=RIM)
+store.forget("calibration")
+store.save(window.surface_path())
+window.reload_surface(store)
+cam._show_home_box()
+
+# Put one gripper at the intended pre-pick and leave the box in the camera.
+_x, _y, _yaw = (0.02, 0.01, math.radians(7))
+window.vision.camera.place(centre=(_x, -_y), yaw=-_yaw)
+_hold_like(_x, _y, _yaw)
+cam._open_home_box()
+for _ in range(30):
+    app.processEvents()
+    cam.tick()
+    if cam.home_box_dialog.camera_view.pixmap() is not None:
+        break
+    time.sleep(0.02)
+dialog = cam.home_box_dialog
+check("the popup contains a live camera image",
+      dialog.isVisible() and dialog.camera_view.pixmap() is not None)
+check("and exposes the complete Jog controls from the main panel",
+      list(dialog.jog_panel.target_btns) == ["A", "AB", "B"]
+      and dialog.jog_panel.motion_combo.count() == 2
+      and dialog.jog_panel.frame_combo.count() == 4
+      and len(dialog.jog_panel.preset_btns) == 4
+      and all(grid.axis_count == 6
+              for grid in dialog.jog_panel.grids.values()))
+dialog.name_edit.setText("box_home")
+dialog.jog_panel._select_target("AB")
+program_panel = window.panels["program"]
+program_panel.program.steps = [
+    Step("FIND", into="part", reference="box_home", timeout=5.0)]
+program_panel.refresh()
+check("before teaching, an existing FIND correctly reports the missing "
+      "reference", "box_home" in program_panel.problems.text(),
+      program_panel.problems.text())
+dialog._save()
+held = window.surface.stance("box_home")
+check("one press stores the detected object and both synchronized arm poses "
+      "together",
+      "box_home" in window.surface.references
+      and held is not None and sorted(held) == ["A", "B"],
+      dialog.status.text())
+check("and FIND can use the new home-box reference immediately",
+      window.executor.taught_on_surface() == {"box_home"}
+      and not program_panel.problems.text(), program_panel.problems.text())
+check("the popup reports both saved TCPs as pre-pick poses",
+      "pre-pick arm A TCP" in dialog.status.text()
+      and "arm B TCP" in dialog.status.text(), dialog.status.text())
+dialog.close()
+
+print("\nand a different crate is a different record, not a refusal")
+_taught_path = window.surface_path()
+cam.length_spin.setValue(200)
+cam.width_spin.setValue(100)
+cam.height_spin.setValue(100)
+cam._size_settled()            # what finishing the field does
+check("changing the size opens that crate's record instead",
+      "200x100x100" in os.path.basename(window.surface_path())
+      and window.surface_path() != _taught_path,
+      os.path.basename(window.surface_path()))
+check("which has nothing in it yet, so the panel offers a new box home",
+      not window.surface.ready
+      and "Ready to teach a camera R/F/H box home" in cam.home_box_lbl.text(),
+      cam.home_box_lbl.text()[:48])
+check("and a FIND has no name to offer for a crate never taught",
+      window.executor.taught_on_surface() == set())
+cam.length_spin.setValue(600)
+cam.width_spin.setValue(400)
+cam.height_spin.setValue(200)
+cam._size_settled()
+check("putting the first crate back finds its map again, untouched",
+      window.surface.ready and "box_home" in window.surface.references
+      and window.surface_path() == _taught_path,
+      window.surface.description)
+
+for _arm_id, _method in _real_tcp.items():       # give the arms back
+    window.cell.arms[_arm_id].tcp_matrix_world = _method
+
+cam.live_btn.setChecked(False)
+cam._toggle_live()
 
 
 def _sample(pixmap, count=400):

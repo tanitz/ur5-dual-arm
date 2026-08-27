@@ -1,0 +1,271 @@
+{
+  "name": "find_test_con",
+  "loop": false,
+  "steps": [
+    {
+      "kind": "LABEL",
+      "enabled": true,
+      "name": "start"
+    },
+    {
+      "kind": "FIND",
+      "enabled": true,
+      "into": "part",
+      "reference": "box_home",
+      "timeout": 5.0
+    },
+    {
+      "kind": "IF",
+      "enabled": true,
+      "source": "var",
+      "name": "part_found",
+      "compare": "==",
+      "value": 0,
+      "target": "no_part"
+    },
+    {
+      "kind": "MOVE",
+      "enabled": true,
+      "a": {
+        "stance": "part",
+        "offset": [
+          0.0,
+          0.0,
+          0.1,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frame": "world",
+        "motion": "movel",
+        "speed": 0.1
+      },
+      "b": {
+        "stance": "part",
+        "offset": [
+          0.0,
+          0.0,
+          0.1,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frame": "world",
+        "motion": "movel",
+        "speed": 0.1
+      },
+      "link": "together"
+    },
+    {
+      "kind": "MOVE",
+      "enabled": true,
+      "a": {
+        "stance": "part",
+        "motion": "movel",
+        "speed": 0.05
+      },
+      "b": {
+        "stance": "part",
+        "motion": "movel",
+        "speed": 0.05
+      },
+      "link": "together"
+    },
+    {
+      "kind": "MOVE",
+      "enabled": true,
+      "a": {
+        "offset": [
+          0.0,
+          -0.025,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frame": "world",
+        "motion": "movel",
+        "speed": 0.05
+      },
+      "b": {
+        "offset": [
+          0.0,
+          0.025,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frame": "world",
+        "motion": "movel",
+        "speed": 0.05
+      },
+      "link": "together"
+    },
+    {
+      "kind": "MOVE",
+      "enabled": true,
+      "a": {
+        "offset": [
+          0.0,
+          0.0,
+          0.1,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frame": "world",
+        "motion": "movel"
+      },
+      "b": {
+        "offset": [
+          0.0,
+          0.0,
+          0.1,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frame": "world",
+        "motion": "movel"
+      },
+      "link": "together"
+    },
+    {
+      "kind": "MOVE",
+      "enabled": true,
+      "a": {
+        "pose": [
+          -0.45403949046815173,
+          0.10229531140488676,
+          1.0990753547267327,
+          -0.0839526443245579,
+          -2.2400326115381053,
+          2.1934804182588525
+        ],
+        "motion": "movel",
+        "speed": 0.12
+      },
+      "b": {
+        "pose": [
+          -0.473041506912434,
+          0.10050463924941583,
+          1.095245010378496,
+          -1.6365657455236668,
+          0.04282904630596416,
+          0.026815015348152744
+        ],
+        "motion": "movel",
+        "speed": 0.12
+      },
+      "link": "together"
+    },
+    {
+      "kind": "MOVE",
+      "enabled": true,
+      "a": {
+        "pose": [
+          -0.4540762731778339,
+          0.10232039180171826,
+          1.0224033490857984,
+          -0.08416498848458366,
+          -2.2401242602096247,
+          2.1934300169143754
+        ],
+        "motion": "movel",
+        "speed": 0.12
+      },
+      "b": {
+        "pose": [
+          -0.4730500489183457,
+          0.10049749955511716,
+          1.0194596711877508,
+          -1.6366131735250709,
+          0.04289412947337281,
+          0.02680350377043025
+        ],
+        "motion": "movel",
+        "speed": 0.12
+      },
+      "link": "together"
+    },
+    {
+      "kind": "DELAY",
+      "enabled": true,
+      "seconds": 1.0
+    },
+    {
+      "kind": "MOVE",
+      "enabled": true,
+      "a": {
+        "offset": [
+          0.0,
+          0.025,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frame": "world",
+        "motion": "movel"
+      },
+      "b": {
+        "offset": [
+          0.0,
+          -0.025,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frame": "world",
+        "motion": "movel"
+      },
+      "link": "together"
+    },
+    {
+      "kind": "MOVE",
+      "enabled": true,
+      "a": {
+        "offset": [
+          0.0,
+          0.05,
+          0.1,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frame": "world",
+        "motion": "movel"
+      },
+      "b": {
+        "offset": [
+          0.0,
+          -0.05,
+          0.1,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frame": "world",
+        "motion": "movel"
+      },
+      "link": "together"
+    },
+    {
+      "kind": "DELAY",
+      "enabled": true,
+      "seconds": 5.0
+    },
+    {
+      "kind": "JUMP",
+      "enabled": true,
+      "target": "start"
+    },
+    {
+      "kind": "LABEL",
+      "enabled": true,
+      "name": "no_part"
+    }
+  ]
+}

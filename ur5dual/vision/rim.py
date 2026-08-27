@@ -46,7 +46,8 @@ STANDARD_SIZES = [
 
 
 # ── the colour image: four corners ────────────────────────────────────────
-def find_rim_quad(color, roi=None, min_area=5000, min_cover=0.45):
+def find_rim_quad(color, roi=None, min_area=5000, min_cover=0.45, notes=None,
+                  prefer=None, prefer_jump=70.0):
     """The opening's four corners in the picture, or None.
 
     Edges, not colour. A grey crate on a grey floor is one reading of the same
@@ -61,6 +62,12 @@ def find_rim_quad(color, roi=None, min_area=5000, min_cover=0.45):
     `roi` masks the edge image rather than cropping the picture, so corners
     come back in full-frame coordinates and the caller has nothing to add
     back on.
+
+    `notes` collects why nothing was found, which matters more than it sounds.
+    "No four-sided opening" is true of a box too small to be looked at, of a
+    box out of frame and of a box that is not there, and an operator cannot
+    act on a sentence that covers all three. The size of the largest shape in
+    view separates the first from the rest by itself.
     """
     gray = cv2.cvtColor(color, cv2.COLOR_BGR2GRAY)
     gray = cv2.bilateralFilter(gray, 9, 75, 75)
@@ -73,20 +80,41 @@ def find_rim_quad(color, roi=None, min_area=5000, min_cover=0.45):
 
     contours, _ = cv2.findContours(edges, cv2.RETR_LIST,
                                    cv2.CHAIN_APPROX_SIMPLE)
-    quads = []
-    for area, hull, contour in sorted(
-            ((cv2.contourArea(h), h, c)
-             for c, h in ((c, cv2.convexHull(c)) for c in contours)),
-            key=lambda item: -item[0])[:15]:
+    ranked = sorted(((cv2.contourArea(h), h, c)
+                     for c, h in ((c, cv2.convexHull(c)) for c in contours)),
+                    key=lambda item: -item[0])[:30]
+    largest = float(ranked[0][0]) if ranked else 0.0
+    regular = []
+    preferred = []
+    prefer = (None if prefer is None
+              else np.asarray(prefer, dtype=np.float64).reshape(4, 2))
+    for area, hull, contour in ranked:
         if area < min_area:
             break                       # sorted, so nothing after this is big
         quad = _quad_from_hull(hull)
         if quad is None:
             continue
-        if _outline_coverage(contour, quad) < min_cover:
-            continue
-        quads.append(quad)
+        coverage = _outline_coverage(contour, quad)
+        if coverage >= min_cover:
+            regular.append((coverage, quad))
+        # A large crate's grid and walls repeatedly cut its rim contour. Once
+        # the tracker knows the opening, proximity supplies the shape evidence
+        # the broken outline lost. Keep this fallback unavailable during the
+        # initial lock so clutter can never teach itself as the reference.
+        if prefer is not None:
+            jump = float(np.max(np.linalg.norm(quad - prefer, axis=1)))
+            if jump <= float(prefer_jump) and coverage >= min_cover * 0.5:
+                preferred.append((jump, -coverage, quad))
 
+    if notes is not None:
+        notes["largest_hull"] = largest
+        notes["min_area"] = float(min_area)
+
+    if preferred:
+        preferred.sort(key=lambda item: (item[0], item[1]))
+        quads = [item[2] for item in preferred]
+    else:
+        quads = [item[1] for item in regular]
     if not quads:
         return None, edges
 
@@ -100,6 +128,30 @@ def find_rim_quad(color, roi=None, min_area=5000, min_cover=0.45):
     else:
         quad = quads[0]
     return quad, edges
+
+
+def why_nothing(notes):
+    """Which of the reasons it was, in terms an operator can act on.
+
+    Only the size one can be said with certainty from here, and it is the one
+    worth saying: a shape too small to be considered was never examined, so no
+    later check has an opinion about it. Everything else falls back to naming
+    what was ruled out rather than guessing why.
+    """
+    largest = (notes or {}).get("largest_hull")
+    floor = (notes or {}).get("min_area")
+    if largest is None or floor is None:
+        return "no four-sided opening in ROI"
+    if largest < floor:
+        return ("nothing in view is big enough to be the opening: the largest "
+                "shape covers %.0f px against the %.0f this route looks at. "
+                "Bring the camera nearer, or say the box is the small one — "
+                "an opening of 300 mm or less takes the other route through "
+                "the detector, which looks down to 1500"
+                % (largest, floor))
+    return ("shapes big enough to be the opening are in view — the largest "
+            "covers %.0f px — but none of them reduces to a rectangle the "
+            "outline actually follows" % largest)
 
 
 def find_bright_quads(color, roi=None, min_area=1500):

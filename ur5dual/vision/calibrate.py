@@ -107,11 +107,10 @@ def solve_hand_eye(flange_mats, marker_in_camera):
 
         T_world_camera · T_camera_marker = T_world_flange · T_flange_marker
 
-    Two unknowns, both constant. Eliminating the marker between a pair of
-    samples turns it into the classical AX = XB, which OpenCV solves; doing
-    the elimination here rather than handing OpenCV the raw poses is what
-    keeps the answer's meaning under this module's control instead of under a
-    naming convention that has changed between releases.
+    Two unknowns, both constant. Eliminating the marker between sample pairs
+    turns this into the classical AX = XB problem OpenCV solves. The explicit
+    inversions below adapt this fixed-camera cell to that API's eye-in-hand
+    parameter names.
     """
     try:
         import cv2
@@ -127,25 +126,28 @@ def solve_hand_eye(flange_mats, marker_in_camera):
             "three poses are the fewest that fix a hand-eye transform; got %d"
             % len(flange_mats))
 
-    # A_k X = X B_k, with A from consecutive arm poses and B from the readings
-    a_rot, a_pos, b_rot, b_pos = [], [], [], []
-    for i in range(len(flange_mats) - 1):
-        a = inv(flange_mats[i + 1]) @ flange_mats[i]
-        b = marker_in_camera[i + 1] @ inv(marker_in_camera[i])
-        a_rot.append(a[:3, :3])
-        a_pos.append(a[:3, 3])
-        b_rot.append(b[:3, :3])
-        b_pos.append(b[:3, 3])
-
+    # OpenCV's eye-in-hand names are awkward for this eye-to-hand cell.  Its
+    # first input is base->gripper; here that is world->flange = inv(F).
+    # Its target->camera input is exactly camera<-marker = M.  With those
+    # directions the returned camera->base transform is world<-camera, which
+    # is the `camera_to_world` this package uses.  Passing pairwise motions to
+    # this API (as the old implementation did) makes OpenCV difference them a
+    # second time and produces a confident but unrelated transform.
+    world_to_flange = [inv(f) for f in flange_mats]
     rotation, translation = cv2.calibrateHandEye(
-        a_rot, a_pos, b_rot, b_pos, method=cv2.CALIB_HAND_EYE_PARK)
+        [m[:3, :3] for m in world_to_flange],
+        [m[:3, 3] for m in world_to_flange],
+        [m[:3, :3] for m in marker_in_camera],
+        [m[:3, 3] for m in marker_in_camera],
+        method=cv2.CALIB_HAND_EYE_PARK)
     camera_to_world = np.eye(4)
     camera_to_world[:3, :3] = np.asarray(rotation, dtype=float)
     camera_to_world[:3, 3] = np.asarray(translation, dtype=float).ravel()
 
-    # the marker's place on the flange falls out of any one sample, and
-    # averaging over all of them is the first thing that says whether the
-    # answer is consistent
+    # The marker's place on the flange falls out of any one sample. Comparing
+    # all of them says whether the answer is consistent; the caller also
+    # checks their rotational spread before accepting the first as the saved
+    # mounting pose.
     on_flange = [inv(f) @ camera_to_world @ m
                  for f, m in zip(flange_mats, marker_in_camera)]
     spread = float(np.max([np.linalg.norm(on_flange[0][:3, 3] - m[:3, 3])

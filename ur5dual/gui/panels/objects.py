@@ -23,8 +23,8 @@ from PyQt5.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
+from ...axes import WORLD_AXIS_SIGN, shown_pose, shown_xyz
 from .. import style as S
-from .jog import WORLD_AXIS_SIGN
 
 
 class ObjectPanel(QWidget):
@@ -296,7 +296,7 @@ class ObjectPanel(QWidget):
             if obj.span() is not None:
                 lines.append("grip span   %.1f mm" % (obj.span() * 1000))
             lines.append("X Y Z       %7.1f %7.1f %7.1f mm"
-                         % tuple(v * 1000 for v in pose[:3]))
+                         % tuple(v * 1000 for v in shown_xyz(pose)))
             lines.append("RX RY RZ    %7.2f %7.2f %7.2f deg (rotvec)"
                          % tuple(np.degrees(pose[3:])))
             lines.append("6-DOF       %s" %
@@ -329,7 +329,7 @@ class ObjectPanel(QWidget):
         for button in self.sim_step_btns:
             button.setEnabled(drive_ready and not coordinator.busy())
         if drive_ready:
-            pose = coordinator.current_pose(self.app.executor.object)
+            pose = shown_pose(coordinator.current_pose(self.app.executor.object))
             status = (
                 "%s holding — world XYZ %.1f %.1f %.1f mm, "
                 "rotvec RX/RY/RZ %.2f %.2f %.2f deg"

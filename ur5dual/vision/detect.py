@@ -12,6 +12,18 @@ never used to reject, because it can only be earned where depth is real. A
 synthetic frame with one flat depth everywhere would fail it while being
 exactly right, and a detector that refused to answer there would be a
 detector no test could hold still.
+
+The pose is in the camera's frame, and its Z is range along the lens axis —
+not height. Those are the same number only for a camera pointing straight
+down, and this cell's does not: measured on two captures of one box standing
+on one table, camera Z differed by 102 mm, of which 114 mm was slide along
+the table and 0 mm was height. So when `vision.surface` has been measured —
+the Camera tab's `Measure Surface + Box` workflow, from the printed ChArUco
+sheet — every detection
+also carries how far the rim stands off that surface, which is the number
+that holds still while the box moves. Optional, because a cell that has not
+been shown the surface still detects perfectly well; it just cannot answer
+"did the box change height" without mistaking camera Z for it.
 """
 
 import math
@@ -19,8 +31,9 @@ import math
 import cv2
 import numpy as np
 
+from .charuco import BoardError, BoardPlane
 from .rim import (STANDARD_SIZES, choose_size, depth_disagreement,
-                  find_bright_quads, find_rim_quad)
+                  find_bright_quads, find_rim_quad, why_nothing)
 
 
 DEFAULT_BOX_SIZE = (0.60, 0.40, 0.20)
@@ -67,7 +80,8 @@ def roi_bounds(shape, roi=None):
     return x1, y1, x2, y2
 
 
-def detect_opening_quad(image, roi=None):
+def detect_opening_quad(image, roi=None, prefer=None, prefer_jump=70.0,
+                        min_area=5000, min_cover=0.45):
     """Return front-left, front-right, back-right, back-left image corners.
 
     A thin wrapper now: the work is `rim.find_rim_quad`, and what is left here
@@ -80,9 +94,16 @@ def detect_opening_quad(image, roi=None):
     if image is None or np.asarray(image).ndim != 3:
         raise DetectionError("the camera did not provide a colour image")
     bounds = roi_bounds(image.shape, roi)
-    corners, edges = find_rim_quad(image, bounds)
+    looked = {}
+    corners, edges = find_rim_quad(
+        image, bounds, min_area=min_area, min_cover=min_cover, notes=looked,
+        prefer=prefer, prefer_jump=prefer_jump)
     if corners is None:
-        raise DetectionError("no four-sided opening in ROI")
+        # Not "no four-sided opening": that sentence is equally true of a box
+        # too small to be looked at, a box out of frame and no box at all, and
+        # an operator cannot act on it. The size of the largest shape in view
+        # separates the first from the rest by itself.
+        raise DetectionError(why_nothing(looked))
     return corners, edges
 
 
@@ -114,6 +135,22 @@ def solve_opening_pnp(corners, intrinsics, length=0.60, width=0.40):
     transform[:3, :3] = cv2.Rodrigues(rvec)[0]
     transform[:3, 3] = tvec.reshape(3)
     return transform, error
+
+
+def surface_plane(surface):
+    """A `charuco.BoardPlane` from whatever a config or a caller handed over.
+
+    None, a dict as `BoardPlane.to_dict` writes it into `vision.surface`, or a
+    plane already built. A surface that will not parse comes back None rather
+    than raising: it costs the height line, and losing the height line is not
+    a reason to stop reporting a pose that was never derived from it.
+    """
+    if surface is None or isinstance(surface, BoardPlane):
+        return surface
+    try:
+        return BoardPlane.from_dict(surface)
+    except (BoardError, KeyError, TypeError, ValueError):
+        return None
 
 
 class OpeningTracker:
@@ -206,12 +243,43 @@ def size_check(found):
     return "size check %+.0f mm — check the opening size" % off
 
 
+def height_check(found):
+    """One line on how far the rim stands above the measured surface.
+
+    This is the number camera Z keeps being mistaken for. Camera Z is range
+    along the lens axis, so on a view as oblique as this cell's it moves by
+    the sine of the tilt every time the box is slid along a table it never
+    left. Measured on two captures of one box: 102 mm of camera Z, of which
+    114 mm was slide and, along the surface normal, none of it was height.
+
+    The bracketed figure is the rim height against the configured wall, so a
+    box standing where the board was measured reads near zero. It drifting is
+    the surface having moved, the camera having been knocked, or the wall
+    height being wrong — and each of those is worth knowing before an arm
+    reaches for it.
+    """
+    if found is None:
+        return ""
+    if found.floor_height is not None:
+        # Both, because they answer different questions and a cell needs
+        # both: how high in the room the rim is, and how far the box stands
+        # proud of whatever it was put down on.
+        return ("height %.0f mm above floor (%.0f mm proud)"
+                % (found.floor_height * 1000,
+                   (found.surface_height or 0.0) * 1000))
+    if found.surface_height is None:
+        return "height: no surface — Camera > Measure Surface + Box"
+    return ("height %.0f mm above surface (%+.0f mm)"
+            % (found.surface_height * 1000,
+               (found.surface_height - found.height) * 1000))
+
+
 class Detection:
     """Solved opening pose with the interface used by FIND and CameraPanel."""
 
     def __init__(self, transform, size, corners, reprojection_error=0.0,
                  state="TRACKING", depth_center=0.0, depth_disagree=None,
-                 clipped=False):
+                 clipped=False, surface_height=None, floor_height=None):
         self._matrix = np.asarray(transform, dtype=float).copy()
         self.size = tuple(float(v) for v in size[:2])
         self.height = float(size[2])
@@ -227,6 +295,16 @@ class Detection:
         # whether a corner is sitting on the edge of the search window, which
         # is the other thing a large disagreement can mean
         self.clipped = bool(clipped)
+        # metres the rim stands off `vision.surface`, along that surface's own
+        # normal; None until a surface has been measured. Unlike `centre[2]`
+        # this does not change when the box slides across the table.
+        self.surface_height = (None if surface_height is None
+                               else float(surface_height))
+        # metres above `vision.floor`, along true vertical; None until a floor
+        # datum has been measured. This is the one height that means the same
+        # thing wherever in the room the box is standing.
+        self.floor_height = (None if floor_height is None
+                             else float(floor_height))
         self.pixels = int(abs(cv2.contourArea(self.corners.astype(np.float32))))
         self.centre = self._matrix[:3, 3].copy()
         self.yaw = float(math.atan2(self._matrix[1, 0], self._matrix[0, 0]))
@@ -262,6 +340,23 @@ class Detection:
         bottom[:, 2] = -self.height
         return np.vstack([top, bottom]) @ self.rotation.T + self.centre
 
+    def display_axis_origin(self):
+        """3D midpoint of the rim edge opposite the image's uppermost edge.
+
+        `corners` and the first four landmarks share the same winding. Using
+        the detected pixels first identifies the upper edge, then selecting
+        the edge two places around the rim puts the axes on its opposite side.
+        This is a drawing anchor only; the solved pose remains centred on the
+        opening for measurement and FIND.
+        """
+        edge_y = np.array([
+            (self.corners[i, 1] + self.corners[(i + 1) % 4, 1]) * 0.5
+            for i in range(4)
+        ])
+        i = (int(np.argmin(edge_y)) + 2) % 4
+        rim = self.landmarks_3d()[:4]
+        return (rim[i] + rim[(i + 1) % 4]) * 0.5
+
     def matrix(self):
         return self._matrix.copy()
 
@@ -277,6 +372,84 @@ class Detection:
                  "" if self.depth_disagree is None
                  else ", depth agrees to %+.0f mm"
                       % (self.depth_disagree * 1000)))
+
+
+def _image_relative_basis(surface=None, floor=None):
+    """Camera-frame columns for right, level-forward, and up."""
+    support = surface_plane(surface)
+    level = surface_plane(floor) or support
+    if level is None:
+        return None, support
+
+    up = np.asarray(level.normal, dtype=float).reshape(3)
+    up /= max(float(np.linalg.norm(up)), 1e-12)
+    camera_right = np.array([1.0, 0.0, 0.0])
+    right = camera_right - up * float(camera_right @ up)
+    length = float(np.linalg.norm(right))
+    if length < 1e-6:
+        return None, support
+    right /= length
+    forward = np.cross(up, right)
+    if float(forward @ np.array([0.0, 0.0, 1.0])) < 0.0:
+        forward = -forward
+        right = -right
+    return np.column_stack([right, forward, up]), support
+
+
+def image_relative_xyz(found, frame, surface=None, floor=None):
+    """Right, level-forward, height for a detection, in metres.
+
+    The first two coordinates are deliberately camera-relative rather than
+    robot-world coordinates.  The detected corner rays meet the known rim
+    plane, so forward is distance along the support surface instead of range
+    along the tilted optical axis.  Camera +X projected onto that plane fixes
+    right; gravity's vertical fixes level-forward when an IMU-backed floor is
+    available.  Height remains the detector's existing surface/floor reading.
+    """
+    basis, support = _image_relative_basis(surface, floor)
+    if found is None or frame is None or basis is None:
+        return None
+
+    point = found.centre
+    if support is not None:
+        try:
+            # Intersect at the height the current detection actually measured,
+            # not the nominal wall height typed in the size field.  A real
+            # 85 mm rim configured as 100 mm otherwise acquires the wrong
+            # perspective scale, most visibly in forward/back travel.
+            rim_height = (found.surface_height
+                          if found.surface_height is not None else found.height)
+            rim = support.lifted(rim_height)
+            points = rim.points_at(frame.intrinsics, found.corners)
+            if np.all(np.isfinite(points)):
+                point = np.mean(points, axis=0)
+        except (BoardError, TypeError, ValueError):
+            pass
+
+    height = (found.floor_height if found.floor_height is not None
+              else found.surface_height)
+    if height is None:
+        return None
+    return np.array([basis[:, 0] @ point, basis[:, 1] @ point, height],
+                    dtype=float)
+
+
+def image_relative_rotation(found, surface=None, floor=None):
+    """Object rotation expressed about right, forward, and height axes.
+
+    A flat box therefore reads RX/RY near zero and RZ as its turn in the
+    picture.  Planar PnP occasionally chooses the equivalent pose whose local
+    Z points into the support; turn that solution over about local X so the
+    reported box normal consistently points up without changing its long-axis
+    direction.
+    """
+    basis, _support = _image_relative_basis(surface, floor)
+    if found is None or basis is None:
+        return None
+    rotation = basis.T @ found.rotation
+    if rotation[2, 2] < 0.0:
+        rotation = rotation @ np.diag([1.0, -1.0, -1.0])
+    return rotation
 
 
 def _touches_edge(corners, roi, margin=EDGE_MARGIN):
@@ -306,10 +479,20 @@ class OpenBoxDetector:
     def __init__(self, box_size=DEFAULT_BOX_SIZE, roi=None,
                  smoothing=0.20, max_reprojection=4.0,
                  max_corner_jump=35.0, confirm_frames=4, hold_frames=15,
-                 auto_size=False, box_sizes=None):
+                 auto_size=False, box_sizes=None, surface=None, floor=None):
         if len(box_size) == 2:
             box_size = (*box_size, DEFAULT_BOX_SIZE[2])
         self.box_size = tuple(float(v) for v in box_size)
+        # The surface the boxes stand on, in this camera's frame. It is a
+        # camera-frame plane, so it is only true while the camera is where it
+        # was when the board was read; moving the bracket means measuring it
+        # again. None simply means the height line has nothing to say.
+        self.surface = surface_plane(surface)
+        # The floor under that surface, squared to gravity by
+        # `tools/level_check`. When it is here the height line answers "how
+        # high in the room" instead of "how far off the crate", which are the
+        # same question only where the boxes stand directly on the floor.
+        self.floor = surface_plane(floor)
         self.roi = tuple(int(v) for v in roi) if roi is not None else None
         self.auto_size = bool(auto_size)
         self.set_box_sizes(box_sizes or ())
@@ -392,12 +575,20 @@ class OpenBoxDetector:
         disagree, edge = depth_disagreement(frame, corners, transform,
                                             self.box_size[1])
         clipped = _touches_edge(corners, notes["roi"])
+        # The rim's height off the measured surface: the one number in this
+        # answer that a box sliding across the table is not supposed to move.
+        height = (None if self.surface is None
+                  else self.surface.height_of(transform[:3, 3]))
+        above_floor = (None if self.floor is None
+                       else self.floor.height_of(transform[:3, 3]))
         notes.update(corners=corners, depth_center=depth,
                      depth_disagree=disagree, clipped=clipped,
+                     surface_height=height, floor_height=above_floor,
                      near_edge_mm=None if edge is None
                      else edge["length"] * 1000.0)
         return Detection(transform, self.box_size, corners,
-                         raw_error or 0.0, state, depth, disagree, clipped)
+                         raw_error or 0.0, state, depth, disagree, clipped,
+                         height, above_floor)
 
     def _find_corners(self, frame):
         """Find the normal rim, or a depth-confirmed small bright carton."""
@@ -408,7 +599,20 @@ class OpenBoxDetector:
             # solvePnP's numbers cannot make that face appear.
             if max(self.box_size[:2]) <= 0.30:
                 return self._find_fixed_small(frame)
-            corners, _ = detect_opening_quad(frame.color, self.roi)
+            # A 600x400 crate fills far more of this fixed view than the
+            # benches and trays behind it. Scale the minimum contour area by
+            # configured opening area so a small background rectangle cannot
+            # establish the initial lock. Its grid cuts the Canny contour into
+            # branches, however, so the outline coverage gate must be looser
+            # than for an ordinary smooth rim; reprojection remains the next
+            # independent gate.
+            opening_area = self.box_size[0] * self.box_size[1]
+            min_area = max(5000.0, 5000.0 * opening_area / 0.060)
+            min_cover = 0.28 if opening_area >= 0.12 else 0.45
+            corners, _ = detect_opening_quad(
+                frame.color, self.roi, prefer=self.tracker.corners,
+                prefer_jump=self.tracker.max_jump * 1.5,
+                min_area=min_area, min_cover=min_cover)
             return corners, None, None
 
         bounds = roi_bounds(frame.color.shape, self.roi)
@@ -450,6 +654,7 @@ class OpenBoxDetector:
 
         fixed = [tuple(self.box_size[:2])]
         closest = None
+        accepted = []
         for candidate in candidates:
             size, off, _ = choose_size(candidate, frame, solve_opening_pnp,
                                        candidates=fixed,
@@ -457,7 +662,46 @@ class OpenBoxDetector:
             if off is not None and (closest is None or abs(off) < abs(closest)):
                 closest = off
             if size is not None:
-                return candidate, None, off
+                # Several threshold bands can produce different quads whose
+                # near rim agrees with depth. Depth validates their scale, not
+                # the exact four corners: returning the first one made a
+                # 200x100 face alternate between ~1 px and 10–17 px fits from
+                # one frame to the next. Choose the candidate that actually
+                # projects as the configured rectangle most closely.
+                _pose, error = solve_opening_pnp(
+                    candidate, frame.intrinsics, *self.box_size[:2])
+                accepted.append((error, candidate, off))
+        if accepted:
+            _error, candidate, off = min(accepted, key=lambda item: item[0])
+            return candidate, None, off
+
+        # Nothing agreed with the configured size, and that is not a reason to
+        # answer nothing. This module's contract is that the depth check is
+        # reported and never used to reject; the crate path above has always
+        # honoured it and this one did not, which made a mistyped size
+        # invisible in the worst way — not a box in the wrong place, but no
+        # box at all, on a tab whose only other explanation is that the lens
+        # cannot see it. A cell 30 mm out at 700 mm refused every frame.
+        #
+        # So the best-projecting rectangle is still the answer, and `find`
+        # carries the disagreement to `size_check`, where it reads as the
+        # sentence it is: this pose fits the corners, and depth says the size
+        # it was solved with is wrong. Reprojection is what ranks them, and it
+        # is the right ranking precisely because it cannot see size: a planar
+        # target solved with the wrong dimensions fits its own corners exactly
+        # as well, simply at another distance. It is asking whether these four
+        # points are a projected rectangle at all.
+        scored = []
+        for candidate in candidates:
+            try:
+                _pose, error = solve_opening_pnp(
+                    candidate, frame.intrinsics, *self.box_size[:2])
+            except (DetectionError, cv2.error, ValueError):
+                continue
+            scored.append((error, candidate))
+        if scored:
+            _error, candidate = min(scored, key=lambda item: item[0])
+            return candidate, None, closest
         if closest is None:
             raise DetectionError("no small box has usable depth at its near edge")
         raise DetectionError("no small box agrees with the fixed size "

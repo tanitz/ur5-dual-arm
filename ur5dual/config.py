@@ -19,6 +19,21 @@ from .geometry.kinematics import mat_to_xyz_rpy, xyz_rpy_to_mat
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_PATH = os.path.join(REPO_ROOT, "config", "cell.yaml")
 
+
+def in_repo(path):
+    """A path out of the config file, anchored where the config file is.
+
+    The paths written in `cell.yaml` are relative because that is how they
+    read — `config/plane.json` says where it is far better than a line of
+    absolute path does. Resolved against the working directory, though, they
+    would name a different file every time the panel was started from a
+    different folder, and a cell that quietly measured the box through an
+    empty map is exactly the failure the map exists to remove.
+    """
+    if path is None:
+        return None
+    return path if os.path.isabs(path) else os.path.join(REPO_ROOT, path)
+
 ARM_IDS = ("A", "B")
 
 DEFAULTS = {
@@ -132,11 +147,23 @@ DEFAULTS = {
     # relative orientation; not enough to rotate the object, which also needs
     # the distance between the bases that motion alone cannot reveal.
     "translation_calibrated": False,
+    # What 100% on the Program tab's speed dial means. The dial is a
+    # percentage of the cell, not of the step: a program runs at the same
+    # fraction of these everywhere, and the speed stamped on a line when it
+    # was taught is carried in the file but no longer sets the pace.
+    #
+    # There are two pairs because "as fast as the arms can go" is a different
+    # number when they are carrying one object between them. A solo or
+    # together line is one arm moving itself and gets max_*; a pair or coupled
+    # line moves a workpiece held by both and gets object_*, which is the
+    # coupled-carry ceiling this cell has always enforced.
     "limits": {
         "jog_lin_max": 0.25,        # m/s
         "jog_ang_max": 1.0,         # rad/s
-        "object_lin_speed": 0.05,   # m/s   default for MOVE_OBJ
-        "object_ang_speed": 0.30,   # rad/s default for ROTATE_OBJ
+        "max_lin_speed": 0.25,      # m/s   100% for a solo/together MOVE
+        "max_ang_speed": 1.0,       # rad/s 100% for its rotation
+        "object_lin_speed": 0.05,   # m/s   100% for a pair/coupled carry
+        "object_ang_speed": 0.30,   # rad/s 100% for turning a carried object
     },
     # Which edge the icon rail and its sidebar sit on, and which panel is open
     # behind the rail. Handedness is not a per-session preference — an operator
@@ -181,6 +208,37 @@ DEFAULTS = {
         "camera_to_world": {"xyz": [0.0, 0.0, 0.0],
                             "rpy": [0.0, 0.0, 0.0]},
         "calibrated": False,
+        # The surface the boxes stand on, in the camera's own frame, as
+        # `normal . X = offset` in metres.  Measured from the printed ChArUco
+        # board by Camera -> Measure Surface + Box; None until it has been.
+        #
+        # What it is for is the question "did the box change height", which
+        # without it is asked of camera Z.  On a lens looking down at an angle
+        # those are not the same question at all: sliding a box along the
+        # table moves camera Z by the slide times the sine of that angle —
+        # 88 mm per 100 mm on this cell's 61 degrees — while its height above
+        # the table has not changed at all.
+        "surface": None,
+        # The floor under that surface, as the same `normal . X = offset` in
+        # the camera's frame, but squared to gravity rather than to the crate:
+        # `scripts/ur5dual-level` reads the D435i's accelerometer for true
+        # vertical and takes where zero is from a tape measurement.  None
+        # until it has been.
+        #
+        # `surface` answers how far a box stands proud of whatever it was put
+        # down on; this answers how high in the room its rim is.  They are the
+        # same number only where the boxes stand on the floor itself, and a
+        # cell that stacks onto crates is not that cell.
+        "floor": None,
+        # Box-home references need no full camera-to-world calibration.  The
+        # camera is fixed over this cell with forward (-F) along robot +X and
+        # right (+R) along robot +Y. FIND applies the R/F offset printed on
+        # the camera card; robot Z remains at the taught pre-pick height.
+        "home_references": {},
+        "home_rf_map": [[0.0, -1.0],
+                        [1.0, 0.0]],  # [robot X,Y] from camera [R,F]
+        "home_tolerance": 0.010,       # camera H / box-height error (m)
+        "home_tolerance_deg": 3.0,     # non-planar tilt error
         # A box that always lies flat, the same way up, at the same height on
         # the same surface has three degrees of freedom, and this file holds
         # the map that reads them: pixels onto that surface, plus the places
@@ -189,6 +247,11 @@ DEFAULTS = {
         # a map, FIND reads three numbers through it instead of six through
         # `camera_to_world`, and needs no camera placement at all.
         "plane_file": "config/plane.json",
+        # The placements that map was fitted from, kept beside it for
+        # the reason flange_log.json sits beside the flange fit: a box
+        # size corrected or one bad placement dropped should be a re-fit,
+        # not another trip round the cell with the arm.
+        "plane_log": "config/plane_log.json",
         # How far a camera is allowed to move a taught pick. A detection is a
         # pose nobody taught and this cell has no arm-to-arm collision check,
         # so a correction bigger than the box could plausibly have shifted is

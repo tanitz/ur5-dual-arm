@@ -35,6 +35,7 @@ import math
 
 import numpy as np
 
+from ..axes import shown_xyz
 from ..geometry.kinematics import (
     mat_to_pose, pose_to_mat, rotvec_to_mat,
 )
@@ -113,9 +114,12 @@ _AXIS_NAMES = ("X", "Y", "Z", "RX", "RY", "RZ")
 #   {"pose": [x,y,z,rx,ry,rz]}                     a pose captured with Here
 
 def make_target(point=None, pose=None, offset=None, frame="world",
-                motion=None, speed=None, pivot=None, correct_by=None, **extra):
+                motion=None, speed=None, pivot=None, correct_by=None,
+                stance=None, **extra):
     """A column, with the numbers normalised to what JSON can hold."""
     t = {}
+    if stance:
+        t["stance"] = str(stance)
     if point:
         t["point"] = str(point)
     if pose is not None:
@@ -136,9 +140,11 @@ def make_target(point=None, pose=None, offset=None, frame="world",
 
 
 def target_kind(target):
-    """Which of the four shapes this is, or None for an empty column."""
+    """Which of the shapes this is, or None for an empty column."""
     if not target:
         return None
+    if target.get("stance"):
+        return "stance_offset" if target.get("offset") is not None else "stance"
     if target.get("point"):
         return "point_offset" if target.get("offset") is not None else "point"
     if target.get("offset") is not None:
@@ -199,7 +205,8 @@ def apply_offset(mat, offset, frame, base=None, pivot=None):
     return out
 
 
-def resolve_target(target, points, current=None, base=None, correction=None):
+def resolve_target(target, points, current=None, base=None, correction=None,
+                   stances=None):
     """The world pose a column asks for, as a 6-vector.
 
     `current` is where the thing this column drives is *now*, in world — what
@@ -212,12 +219,26 @@ def resolve_target(target, points, current=None, base=None, correction=None):
     moves with it. It multiplies from the left, which is the difference
     between "the workpiece is somewhere else" and "the wrist is turned" —
     adding an angle to the target instead would spin the tool on the spot.
+
+    `stances` are places an arm stands relative to the box rather than places
+    in the cell, and a column naming one is already where the box is: it needs
+    no correction, because there is nothing taught in the old place to carry.
+    That is the difference between the two ways of writing the same pick, and
+    the reason both exist — a taught point plus a correction can be read off
+    the Points tab and checked by eye, and a stance cannot go stale.
     """
     kind = target_kind(target)
     if kind is None:
         raise ValueError("an empty column has no target")
 
-    if kind in ("point", "point_offset"):
+    if kind in ("stance", "stance_offset"):
+        name = target["stance"]
+        if not stances or name not in stances:
+            raise ValueError(
+                "this line holds the box by %r, and nothing has found it — "
+                "put a FIND above it" % name)
+        mat = _as_matrix(stances[name])
+    elif kind in ("point", "point_offset"):
         mat = pose_to_mat(points.get(target["point"]))
     elif kind == "pose":
         mat = pose_to_mat(target["pose"])
@@ -260,13 +281,18 @@ def describe_target(target, with_motion=True):
     if kind is None:
         return "·"
     if kind == "pose":
-        p = np.asarray(target["pose"], dtype=float)
+        # printed in the jog keys' sign, like every other readout
+        p = shown_xyz(np.asarray(target["pose"], dtype=float))
         text = "here [%.1f %.1f %.1f]" % (p[0] * 1000, p[1] * 1000, p[2] * 1000)
     else:
         shift = ("%s %s" % (target.get("frame", "world"),
                             format_offset(target["offset"]))
                  if target.get("offset") is not None else "")
-        if kind == "point":
+        if kind == "stance":
+            text = "at %s" % target["stance"]
+        elif kind == "stance_offset":
+            text = "at %s + %s" % (target["stance"], shift)
+        elif kind == "point":
             text = target["point"]
         elif kind == "point_offset":
             text = "%s + %s" % (target["point"], shift)
@@ -684,6 +710,12 @@ class Program:
                     "line %d: corrected by %r, but nothing has looked for it "
                     "yet — a FIND has to come above the line it corrects"
                     % (line, name))
+            held = (target or {}).get("stance")
+            if held and held not in found:
+                problems.append(
+                    "line %d: holds the box by %r, but nothing has looked for "
+                    "it yet — a FIND has to come above the line that holds it"
+                    % (line, held))
 
     def _check_io(self, step, line, problems):
         arm = step.get("arm")

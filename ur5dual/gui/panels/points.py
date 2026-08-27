@@ -18,6 +18,7 @@ from PyQt5.QtWidgets import (
     QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
+from ...axes import shown_pose
 from .. import style as S
 
 
@@ -138,7 +139,7 @@ class PointsPanel(QWidget):
         names = self.app.points.names()
         self.table.setRowCount(len(names))
         for row, name in enumerate(names):
-            pose = self.app.points.get(name)
+            pose = shown_pose(self.app.points.get(name))
             text = ("%7.1f %7.1f %7.1f"
                     % (pose[0] * 1000, pose[1] * 1000, pose[2] * 1000))
             full = ("x y z   %7.1f %7.1f %7.1f  mm\n"

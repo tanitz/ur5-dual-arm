@@ -261,7 +261,7 @@ def card(text):
 
 
 # ── the live window ───────────────────────────────────────────────────────
-def closes_are_reported(log=print):
+def closes_are_reported(log=print, window=WINDOW):
     """Whether this build can say the window was shut with its own button.
 
     Asked rather than assumed, because the answer belongs to the backend and
@@ -272,7 +272,7 @@ def closes_are_reported(log=print):
     operator sees is a camera that never opened.
     """
     cv2 = opencv()
-    if cv2.getWindowProperty(WINDOW, cv2.WND_PROP_VISIBLE) >= 0:
+    if cv2.getWindowProperty(window, cv2.WND_PROP_VISIBLE) >= 0:
         return True
     log("(this OpenCV does not report the window's close button — press q)")
     return False

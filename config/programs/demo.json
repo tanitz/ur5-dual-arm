@@ -1,0 +1,36 @@
+{
+  "name": "demo",
+  "loop": false,
+  "steps": [
+    {
+      "kind": "MOVE",
+      "enabled": true,
+      "a": {
+        "point": "A_1",
+        "motion": "movel",
+        "speed": 0.121
+      },
+      "b": {
+        "point": "B_1",
+        "motion": "movel",
+        "speed": 0.12
+      },
+      "link": "together"
+    },
+    {
+      "kind": "MOVE",
+      "enabled": true,
+      "a": {
+        "point": "A_2",
+        "motion": "movel",
+        "speed": 0.121
+      },
+      "b": {
+        "point": "B_2",
+        "motion": "movel",
+        "speed": 0.12
+      },
+      "link": "together"
+    }
+  ]
+}

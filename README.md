@@ -65,7 +65,7 @@ the sidebar can be closed and STOP cannot.
 │ [▶ Run ][   insert ▾   ][＋][   ⧉ A+B    ]  │    │ ⇄  │
 │ [⏸Pause][● MOVEJ][↗ MOVEL][  A  ][  B  ]    │    │    │
 │ [■ Stop][▷To][✏Edit][⎘Dup][✕Del][   ↑   ]   │    │    │
-│ [📂Load][💾Save][🔁Loop][ 120 mm/s ][   ↓   ] │    │    │
+│ [📂Load][▶10%][💾Save][🔁Loop][120 mm/s][ ↓  ] │    │    │
 ├──────────────────────────────────────────┴────┴─────────┤
 │ Messages: newest line                         [Expand]  │
 └─────────────────────────────────────────────────────────┘
@@ -207,6 +207,25 @@ thumb. `⧉ A+B` sits directly over `A` and `B` and is exactly as wide as the tw
 of them together, which is the layout saying what the button means. `↑` and `↓`
 stack at the right end of the two rows that act on the selected step.
 
+`▶ %` is how fast the run goes, and it governs the whole program rather than
+one line of it. 100% is what the cell may do: `limits.max_lin_speed` for a
+line one arm runs by itself, and `limits.object_lin_speed` for a `pair` or
+`coupled` line, where both arms are pushing the same workpiece and the
+coupled-carry ceiling applies instead. A speed is still stamped on a step when
+it is recorded and still saved with it — it is what the line was taught at —
+but it is no longer what the line runs at, so a program taught at a crawl and
+one taught at speed both answer to the same dial.
+
+It sits beside `Load` rather than out with the record box, because it belongs
+to the left column: the things that act on the program as a whole, under the
+thumb that presses Run. Turning it while a program is running is allowed and
+takes effect on the next line sent — the move already on the wire finishes at
+the speed it was given. It comes up at 10% every launch and is never written
+to `cell.yaml`, on purpose: a dial that remembers comes back at whatever the
+last shift left it on, and the failure that matters is the one where somebody
+turned it up to prove a cycle time, closed the panel, and the next person to
+press Run gets that speed on a program they have not watched move.
+
 `Dry run` and `On/off` are not on the panel. The executor still walks a program
 without commanding either arm — the tests run on that — but nothing on screen
 turns it on, so a Run is always a real one. A step saved as disabled still
@@ -313,6 +332,9 @@ ur5dual/vision/
   detect.py     solvePnP, outlier rejection and tracking over those corners
   service.py    the camera on its own thread, and the newest thing it saw
   calibrate.py  where the lens is, from places the arm and the camera both saw
+  planar.py     where the box is on the surface it slides on — three numbers
+ur5dual/tools/
+  plane_fit.py  collecting the placements a plane map is fitted from
 ```
 
 Each sensor does what it is good at. The colour image finds the four corners
@@ -323,6 +345,39 @@ is asked afterwards how far away the near rim actually is, and the difference
 between that and where the solved pose puts it is the `size check` line on the
 Camera tab: a right size agrees to a few millimetres on this cell, and a wrong
 one is out by hundreds.
+
+### Height is not camera Z
+
+The pose is in the camera's frame, and its Z is range along the lens axis.
+That is the same thing as height only for a lens pointing straight down, and
+this cell's points down *and along* — measured off two captures of one box on
+one table, camera Z differed by 102 mm, of which 114 mm was slide across the
+table and, along the table's own normal, none of it was height. Read camera Z
+as a height and every sideways move looks like the box got taller.
+
+Open **Camera -> Measure Surface + Box** and give it the two captures it asks
+for: the box on the table with the sheet out of sight, then the printed
+ChArUco sheet lying *where the box stood*. Press `Apply + Save`. That writes
+the table into `vision.surface`
+as a plane in the camera's frame — and, where the pair measured it, the real
+`vision.box_size` alongside — and every detection then carries how far the rim
+stands off that surface. It is the line on the Camera tab that reads
+
+```
+height 103 mm above surface (+3 mm)
+```
+
+The first number is the rim's height above the table; the bracketed one is
+that against `vision.box_size`'s wall, so a box standing on the surface that
+was measured reads near zero. Sliding it across the table must not move
+either. If they drift, the surface has moved, the camera has been knocked, or
+the wall height is wrong — and a cell reading only camera Z cannot tell you
+which, because camera Z was never going to hold still anyway.
+
+Until the board has been run the line says so rather than guessing, and
+nothing else changes: the surface is measured in the camera's frame, so it is
+true only while the camera is where it was when the sheet was read. Move the
+bracket and measure it again.
 
 Corners come from contour hulls rather than Hough lines. A box with work
 standing proud of its rim breaks the edge Canny draws, and a broken loop is an
@@ -361,7 +416,10 @@ choose the opening from the standard crate sizes instead of being told.
 Set `vision.log_enabled` and a Camera session writes
 `logs/camera_openbox_*.csv`: raw and filtered corners, raw and filtered
 transforms, depth, reprojection error and the `LOCKING/TRACKING/HOLD/REJECT`
-state for every frame, plus detector settings in the metadata line. It is the
+state for every frame, plus detector settings in the metadata line. It also
+carries `surface_height_m` beside camera Z, which is how a slide test is read:
+push the box along the table, and the one column that should not move is the
+height while `filtered_z_m` moves by 88 mm per 100 mm. It is the
 evidence for tuning the filter, instead of judging accuracy from a moving
 overlay — and it is off by default, because a row a frame is tens of megabytes
 per shift for a question nobody is asking most days.
@@ -384,8 +442,113 @@ into an image and requires the detector to recover its translation within
 the `VisionService` thread, so neither edge extraction nor the four-frame
 initial lock blocks Qt's UI thread.
 
-`FIND` is how a detection reaches a program. It stores not where the box is
-but **how far it has moved** — the rigid transform from the place the pick was
+`FIND` is how a detection reaches a program, and it measures that in whichever
+of the two ways the cell has been set up for: through `config/plane.json` when
+a plane map is in it, and through `vision.camera_to_world` otherwise. A cell
+with neither is refused. It used to run the second one against an identity
+transform, which puts every detection in the camera's own frame and produces a
+correction that is confidently wrong — caught, if at all, by `max_correction`
+noticing the size of it.
+
+### Height above the floor, not above the crate
+
+`vision.surface` is the surface the boxes stand on, so the height line answers
+how far a box stands proud of *that* — on this cell, off a crate lid. Two
+things are missing before the same number is a height in the room, and only
+one of them is a measurement anybody has to take.
+
+Which way is up is not one of them. The D435**i** has an accelerometer, and at
+rest the only force on it is gravity, so true vertical is something this cell
+can read rather than assume:
+
+```
+scripts/ur5dual-level                  # what gravity says about the surface
+scripts/ur5dual-level --floor 152      # ...and the floor 152 mm below it
+```
+
+With no arguments it says how far the measured surface is out of level, and
+what that costs — a surface 2 degrees out reads a 100 mm box 0.06 mm short,
+and moves its true height by 10 mm across 300 mm of slide. Worth knowing
+before a plane measured at one end of a crate is used at the other.
+
+`--floor` supplies the part gravity cannot: where zero is. Measure once with a
+tape, floor to the surface the boxes stand on, and it writes `vision.floor` —
+the surface dropped by that much and squared to **gravity** rather than to the
+crate, so a crate that is out of level does not tilt the room's idea of height
+along with it. The Camera tab then reads
+
+```
+height 249 mm above floor (97 mm proud)
+```
+
+both numbers, because a cell needs both: how high in the room the rim is, and
+how far the box stands proud of whatever it was put down on. `surface_height_m`
+and `floor_height_m` are both columns in the session CSV.
+
+It uses the Camera tab's existing stream, so no second process competes for
+the RealSense. The camera must not move between the box and board captures.
+
+### The hold, taught as a distance
+
+There are two ways to write the same pick, and the difference is what is
+stored. A taught point plus a correction keeps the grip as a place in the
+cell, and `FIND` carries it. A **hold** keeps it as a distance from the box —
+"80 mm along its long side, 60 mm above the rim" — and `FIND` puts that
+distance where the box now is. Both land in the same place. Only one of them
+survives the map being fitted again: re-fit and every placement moves,
+including the one a pick was taught against, and a world pose taught beside it
+does not move with it. A distance does.
+
+Which way the box is facing is read off the tool's *orientation*, not off the
+line between the two arms — which is also what makes "parallel to the sides"
+the whole of what an operator has to get right. That was the first design, and a real cell showed
+what was wrong with it: two arms taking hold of a box from opposite sides put
+their tool centres on opposite faces of it, a couple of centimetres apart —
+measured here, 23 mm — and a direction taken from a baseline that short is
+worth nothing. A gripper with hold of the box turns with it, so its
+orientation says which way it faces directly and needs no baseline at all.
+Whatever constant sits between that tool and the box is absorbed into the
+offset the fit already solves for.
+
+The Camera tab exposes this as one `Create Home Box` button. Its popup keeps
+the live camera image beside the complete Jog panel: Arm A / synchronized A+B
+/ Arm B, hold or step motion, Cartesian world/base/tool or joints, four speed
+presets, and X/Y/Z/RX/RY/RZ. Jog the selected gripper tip or pair to the safe
+pose immediately before the pick, keep the box visible, and press
+`Save arm + object`. That one press takes a fresh camera reading and records it
+together with the selected TCP pose(s), so the box cannot be nudged between
+two separate teaching steps.
+
+With a plane map, the popup stores `box_home` as a placement on that surface
+and stores the TCP as that arm's stance relative to the box; `FIND` can use it
+immediately. With a calibrated `vision.camera_to_world`, it stores the 6D box
+pose as `box_home` and the TCP as `box_home_A_pre_pick` or
+`box_home_B_pre_pick` in the point library. If neither coordinate conversion
+exists, it stores a guarded **fixed home** instead: the camera-frame detection
+is used only to confirm that the box has not moved, then `FIND` publishes the
+absolute pre-pick TCP pose(s) saved at that home. A fixed home refuses a moved
+box; following one requires a plane map or calibrated camera-to-world, because
+a camera-frame movement cannot safely be applied to a world-frame arm without
+that conversion.
+
+```
+FIND   look for the box, against box_home -> part
+IF     part_found == 0   jump  no_part
+MOVE   A  at part + world Z+50 | B  at part + world Z+50   together
+MOVE   A  at part              | B  at part                together
+ATTACH box
+```
+
+Each column is given its own arm's hold. Selecting which happens in the
+executor rather than inside `resolve_target`, so that function stays what it
+is — a name and a place — and the one thing that knows which arm a column
+drives stays in the one place that already knew.
+
+A hold needs no `moved by`, and the editor hides that row when a column is
+holding: carrying a hold by a correction as well would apply the box's
+movement twice.
+
+Either way `FIND` stores not where the box is but **how far it has moved** — the rigid transform from the place the pick was
 taught at to where the box is now — and a `MOVE` target carried by that
 correction is moved the same way the box was. That is the difference between
 "the workpiece is somewhere else" and "the wrist is turned": the correction
@@ -399,12 +562,145 @@ MOVE   A  pick + world Z+50   movel      moved by part
 ```
 
 `box_home` is taught once, with the box standing where the picks were taught
-against it, and it lives in the ordinary point library rather than in a corner
-of the camera's own settings. The Camera tab used to have a `⌖ Teach box home`
-button for it; it wrote a pose in the *camera's* frame, which is only the
-cell's frame once `vision.camera_to_world` has been calibrated, so on an
-uncalibrated cell it taught a point that read as authoritative and was not.
-Teach it from the Points tab like any other place.
+against it. Where it lives depends on which of the two ways below the cell
+measures with: a point in the ordinary library for the six-number way, and a
+placement in `config/plane.json` for the three-number one.
+
+The Camera tab used to write `box_home` directly from the camera frame, which
+is only the cell frame once `vision.camera_to_world` has been calibrated. The
+new popup is sound for the reason that version was not: it accepts either a
+placement from an existing plane map or a pose transformed through a calibrated
+camera, and refuses to save when neither route exists.
+
+### Three numbers instead of six
+
+A box that always lies flat, the same way up, at the same height on the same
+surface has three degrees of freedom — it slides in x and y and turns about
+the surface's normal. The other three are not merely unused. They are the
+three this detector is worst at, measured on this cell's own capture at one
+pixel of corner noise:
+
+| | yaw | roll / pitch | x, y | range |
+|---|---|---|---|---|
+| noise at 1 px | **0.20°** | 1.07° | 1.0 mm | **3.35 mm** |
+| moved by a 1% error in `box_size` | **0.0000°** | 0.0000° | 0.9, 1.4 mm | **11.8 mm** |
+
+The second row is not a coincidence but a property of the problem: feed
+`solvePnP` an object size 1% wrong and the whole answer scales by exactly 1%
+about the optical axis, while the rotation does not move by so much as 4e-16.
+Range takes almost all of it.
+
+So `planar.py` asks for neither range nor tilt. It asks where a pixel lands on
+one known surface, which for a fixed camera and a fixed plane is a homography
+— eight numbers, and *exact* rather than a fit that happens to be close. On
+ideal data the residual is 0.0000 mm at every position tried, including
+positions well outside the ones it was fitted from.
+
+What that buys beyond accuracy is that `vision.camera_to_world` stops
+mattering. Where the lens is, which way it points, what `box_size` says, what
+the lens does to straight lines — all of it collapses into those eight
+numbers, fitted from the box itself at the height it actually sits. The
+placement that could not be got below about 9 mm is not improved; it is made
+unnecessary.
+
+The bill comes due in one place. The map is a map of *one* plane, and a box
+whose rim sits higher than the plane it was fitted at is reported shifted
+along the line of sight by the height error times the tangent of the camera's
+angle from vertical — 1.88 mm per millimetre at this cell's 62°. Ten
+millimetres of variation in box height is twenty-five millimetres of miss. If
+the boxes stop being identical, `detect.py`'s full pose is the right tool.
+
+That tangent is also the one argument about where to bolt the camera, and it
+points the opposite way from `detect.py`'s. Full 6-DOF wants an oblique view,
+because foreshortening is what fixes tilt: out-of-plane noise falls from 1.07°
+to 0.30° between a square-on view and 60°. A plane map wants the view as near
+overhead as the rig allows, which improves both of its terms at once — at 35°
+the height penalty is 0.70 mm/mm instead of 1.88 and yaw noise 0.35° instead
+of 0.59°. Nothing in software is worth as much as moving the bracket.
+
+### Surface-map calibration
+
+There was a way to say where the box is that involved driving one arm to each
+of four rim corners, three or four times over. It worked and it is gone,
+because doing the job says the same thing for nothing: two arms carry the box,
+set it down, and are still gripping it. Their poses at that moment are a frame rigidly
+attached to the box — not the box's frame, because nobody measured where the
+grips sit on it, but one that differs from it by the *same* unknown every
+time.
+
+That is what makes it solvable with three unknowns rather than eleven. The map
+has eight degrees of freedom and the grip-to-box offset has three, but the
+eight follow in closed form once the three are guessed: propose an offset, and
+every cycle's rim corners are known in the cell, which is a plain homography
+fit. Only the three are searched, and the inner fit's residual scores them.
+
+The fitting data still comes from the work: the box stands on the table, both
+arms are recorded at a repeatable pose relative to it, then they swing clear
+and the camera records its corners. Move the box and repeat. Three rounds are
+the mathematical minimum for a map; five or six is what a real answer looks
+like. This is cell calibration data, separate from the day-to-day
+`Create Home Box` popup, which consumes the fitted map in one press.
+
+How far short of the box the arms stop does not matter, and that is the point
+of storing a stance rather than a grip: what has to be the same every round is
+the pose *relative to the box*, and closing the last few centimetres is an
+offset the program adds afterwards — `at part + world Z-40`.
+
+Two properties are worth knowing before trusting it.
+
+The first is that the offset is fixed only up to a shift unless the box is
+turned through a range between cycles — the same argument `spread_of` makes
+one dimension up, and the reason the flange fit refuses readings taken along a
+line. Here it does not have to be refused, because the shift is a gauge: the
+map is fitted *through* that same offset, so the frame the two of them agree
+to call the box's middle may not be its middle, and every number derived from
+the pair is still right. Measured against a rendered box, the arms land within
+1.2 mm of where the box needs them while the offset itself is metres from
+being a physical description of anything.
+
+The second is that a sample must be a measurement. `OpenBoxDetector` smooths
+corners across frames and holds them through a jump, which is right for a
+picture somebody is watching and wrong here: a sample taken after the box
+moved would otherwise be part of where it used to be. Every capture forgets
+the temporal lock first. Measured without that, a calibration built from
+blends of consecutive placements put the arms 128 mm out.
+
+### What it refuses
+
+A map fitted from fewer than three pick-and-places is refused: two determine
+the eleven numbers between them and say nothing about whether they are right,
+and disagreement is the only evidence a fit ever offers.
+
+A fit whose residual exceeds 30 mm is refused as well. That threshold is not a
+noise limit — the simulated camera, which rasterises its box onto whole
+pixels, fits to about 2 mm — it is there for the one mistake that does not
+look like one: plane axes handed the wrong way round, which pairs every corner
+with the one diagonally opposite. Measured, that fits to 179.9 mm against the
+same samples' 2.0 mm, so anything between the two settles it.
+
+Which image corner is which is not assumed either. `rim.order_corners` labels
+them by where they sit in the picture, and that rolls by one as the box turns
+— measured on this cell's geometry, already at -25°. So the labels are re-read
+from what the map says: fit with them as they came, let that map say which
+corner each one really is, and fit again.
+
+The last one is not a refusal at all any more, and it used to be the sharpest.
+A map is a map of one plane and that plane is the rim of one box, so the
+opening's size being a live control on the Camera tab while the map was a
+single file meant that changing the crate produced not an error but an answer
+— the wrong rectangle fitted through a map of the wrong plane. Swap a 200 mm
+crate for a 230 mm one and the rim it reads is 30 mm off the surface the map
+knows, which at 62° is 56 mm of lateral miss with nothing on screen to say so.
+
+So the record follows the crate. `config/plane.json` with a 200x100x100 box in
+front of the lens is `config/plane_200x100x100.json`, and the log beside it
+the same; changing the size on the Camera tab opens that crate's record, and
+putting the first crate back finds its map again untouched. A cell that runs
+three crates keeps three maps and never chooses between them by hand.
+
+`PlaneFile.fits_box` stays, because it guards a different thing: the path
+decides which file to open and the check decides whether what was opened can
+be believed. A path can be typed and a file can be edited.
 
 Finding nothing is not an error. `FIND` writes `<name>_found` as 0 and carries
 on, so a program branches on it rather than stopping; what *is* an error is a

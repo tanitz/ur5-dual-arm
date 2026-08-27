@@ -25,8 +25,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from ur5dual.cell import Cell
 from ur5dual.config import CellConfig
-from ur5dual.program.executor import Executor, ProgramError
+from ur5dual.program.executor import (
+    MAX_SPEED_PCT, MIN_SPEED_PCT, START_SPEED_PCT, Executor, ProgramError,
+)
 from ur5dual.program.steps import PointLibrary, Program, Step, make_target
+from ur5dual.vision.detect import (
+    image_relative_rotation, image_relative_xyz, surface_plane,
+)
 
 fail = 0
 
@@ -388,6 +393,7 @@ except ProgramError as e:
 
 print("\nFIND corrects a taught pick by where the box actually is")
 from ur5dual.geometry.kinematics import mat_to_pose as _mat_to_pose   # noqa: E402
+from ur5dual.geometry.kinematics import pose_to_mat as _pose_to_mat   # noqa: E402
 from ur5dual.program.steps import resolve_target                      # noqa: E402
 from ur5dual.vision.planar import (                                   # noqa: E402
     PlaneFile, PlaneMap, box_on_plane, rim_corners,
@@ -479,6 +485,10 @@ try:
     print("\nand a cell told neither where its lens is nor where its "
           "surface is")
     cell.config.vision["calibrated"] = False
+    cell.config.vision["home_references"] = {}
+    check("the editor is sent to the surface, not to the point library — "
+          "offering places a run would refuse is offering a dead end",
+          ex.taught_on_surface() == set(), str(ex.taught_on_surface()))
     try:
         ex._execute(Step("FIND", into="part", reference="box_home", timeout=5))
         check("refuses to turn a detection into a place in itself", False,
@@ -486,6 +496,107 @@ try:
     except ProgramError as e:
         check("refuses to turn a detection into a place in itself",
               "no plane map" in str(e), str(e)[:60])
+
+    print("\na fixed home remains usable without inventing a camera frame")
+    # This is the same metric R/F/H frame the Camera card displays. The sim
+    # table is 700 mm down camera Z; its normal points back toward the lens.
+    cell.config.vision["surface"] = {
+        "normal": [0.0, 0.0, -1.0],
+        "offset": -float(vision.camera.plane_z),
+    }
+    vision.config["surface"] = cell.config.vision["surface"]
+    vision.detector.surface = surface_plane(cell.config.vision["surface"])
+    vision.detector.reset()
+    vision.camera.place(centre=(0.0, 0.0), yaw=0.0)
+    fixed_reading = vision.fresh(timeout=5.0)
+    fixed_reading.detection.surface_height = BOX[2]
+
+    def rfh_pose(reading):
+        pose = np.eye(4)
+        pose[:3, :3] = image_relative_rotation(
+            reading.detection, cell.config.vision["surface"])
+        pose[:3, 3] = image_relative_xyz(
+            reading.detection, reading.frame,
+            cell.config.vision["surface"])
+        return pose
+
+    taught_rfh = rfh_pose(fixed_reading)
+    cell.config.vision["box_size"] = list(BOX)
+    cell.config.vision["home_references"] = {
+        "fixed_home": {
+            "camera_rfh": list(_mat_to_pose(taught_rfh)),
+            "tools": {arm_id: list(cell.arms[arm_id].tcp_pose_world())
+                      for arm_id in ("A", "B")},
+            "box_size": list(BOX),
+        }}
+    check("the editor offers a fixed-home reference",
+          ex.taught_on_surface() == {"fixed_home"},
+          str(ex.taught_on_surface()))
+    ex._execute(Step("FIND", into="part", reference="fixed_home", timeout=5))
+    check("FIND publishes both saved pre-pick TCPs at the taught home",
+          sorted(ex.stances.get("part") or {}) == ["A", "B"]
+          and np.allclose(ex.poses["part"], np.eye(4)))
+    vision.camera.place(centre=(0.06, -0.03), yaw=0.0)
+    moved_reading = vision.fresh(timeout=5.0)
+    moved_reading.detection.surface_height = BOX[2]
+    ex._execute(Step("FIND", into="part", reference="fixed_home", timeout=5))
+    moved = ex.stances["part"]
+    rfh_shift = rfh_pose(vision.latest)[:3, 3] - taught_rfh[:3, 3]
+    expected_shift = np.array([-rfh_shift[1], rfh_shift[0], 0.0])
+    actual_shift = (moved["A"][:3, 3]
+                    - _pose_to_mat(cell.config.vision["home_references"]
+                                   ["fixed_home"]["tools"]["A"])[:3, 3])
+    check("box home follows camera -F as robot X and R as robot Y",
+          np.allclose(actual_shift, expected_shift, atol=0.002),
+          "%s != %s" % (actual_shift, expected_shift))
+    # Exercise yaw through the same live detector and R/F/H conversion.
+    vision.camera.place(centre=(0.0, 0.0), yaw=np.radians(10.0))
+    vision.detector.tracker.alpha = 1.0
+    vision.detector.reset()
+    turned_reading = vision.fresh(timeout=5.0)
+    turned_reading.detection.surface_height = BOX[2]
+    correction, turned, _off = ex._at_fixed_home(
+        "fixed_home", turned_reading.detection, turned_reading.frame)
+    taught_a = _pose_to_mat(cell.config.vision["home_references"]
+                            ["fixed_home"]["tools"]["A"])
+    taught_b = _pose_to_mat(cell.config.vision["home_references"]
+                            ["fixed_home"]["tools"]["B"])
+    taught_span = taught_a[:3, 3] - taught_b[:3, 3]
+    turned_span = turned["A"][:3, 3] - turned["B"][:3, 3]
+    expected_span = correction[:3, :3] @ taught_span
+    check("box yaw rotates both pre-pick poses around their shared home anchor",
+          np.allclose(turned_span, expected_span, atol=0.002)
+          and abs(_mat_to_pose(correction)[5]) > np.radians(5.0),
+          "span %s, yaw %.1f deg" %
+          (turned_span, np.degrees(_mat_to_pose(correction)[5])))
+    print("\nand height remains a guard, not a robot offset")
+    cell.config.vision["home_tolerance"] = 0.010
+    lifted = vision.fresh(timeout=5.0)
+    lifted.detection.surface_height = BOX[2] + 0.020
+    try:
+        ex._at_fixed_home("fixed_home", lifted.detection, lifted.frame)
+        check("while a box genuinely lifted off that bench is still refused, "
+              "which is what the height tolerance is for", False,
+              "it answered anyway")
+    except ProgramError as e:
+        check("while a box genuinely lifted off that bench is still refused, "
+              "which is what the height tolerance is for",
+              "changed height" in str(e), str(e)[:70])
+
+    old = cell.config.vision["home_references"]["fixed_home"]
+    old.pop("camera_rfh")
+    old["camera_pose"] = list(_mat_to_pose(fixed_reading.detection.matrix()))
+    try:
+        ex._at_fixed_home("fixed_home", lifted.detection, lifted.frame)
+        check("an old lens-frame home is refused until it is retaught", False)
+    except ProgramError as e:
+        check("an old lens-frame home is refused until it is retaught",
+              "recreate" in str(e), str(e))
+
+    cell.config.vision["surface"] = None
+    cell.config.vision["home_tolerance"] = 0.1
+    cell.config.vision["home_references"] = {}
+    vision.camera.place(centre=(0.0, 0.0), yaw=0.0)
     cell.config.vision["calibrated"] = True
 
     # -- the same FIND, read off the surface instead of the lens -----------
@@ -511,6 +622,11 @@ try:
 
     ex.surface = PlaneFile(plane_map, box_size=BOX,
                            path=os.path.join(work, "plane.json"))
+    # The map was fitted with this box, and a map is a map of the plane that
+    # box's rim lies on. The cell has to be set to the same one or FIND is
+    # refused — which is the point, and is checked below.
+    was_configured = cell.config.vision.get("box_size")
+    cell.config.vision["box_size"] = list(BOX)
     ex.surface.teach("box_home",
                      box_on_plane(seen_at(0.0, 0.0), plane_map, BOX))
     check("FIND's reference now resolves against the surface",
@@ -533,6 +649,68 @@ try:
           "%.2f deg, z %+.4f mm" % (np.degrees(np.linalg.norm(shift[3:])),
                                     shift[2] * 1000))
 
+    # -- the hold, taught as a distance from the box ----------------------
+    print("\na hold taught as a distance from the box needs no correction")
+    seen_at = lambda x, y, t=0.0: vision.camera.place(centre=(x, -y), yaw=-t)
+    seen_at(0.0, 0.0)
+    ex._execute(Step("FIND", into="part", reference="box_home", timeout=5))
+    at_home = ex.surface.reference("box_home")
+    # the tool 80 mm along the box's own long axis, 60 mm above the rim
+    tools = {"A": at_home.matrix() @ _pose_to_mat([0.080, 0, 0.060, 0, 0, 0]),
+             "B": at_home.matrix() @ _pose_to_mat([-0.080, 0, 0.060, 0, 0, 0])}
+    ex.surface.teach_stance("box_home", tools)
+    check("both arms' holds are stored, as distances from the box",
+          np.allclose(_mat_to_pose(ex.surface.stance("box_home", "A"))[:3],
+                      [0.080, 0.0, 0.060], atol=1e-9)
+          and np.allclose(_mat_to_pose(ex.surface.stance("box_home", "B"))[:3],
+                          [-0.080, 0.0, 0.060], atol=1e-9),
+          str(ex.surface.stance_arms("box_home")))
+
+    seen_at(0.05, -0.04, math.radians(16))
+    ex._execute(Step("FIND", into="part", reference="box_home", timeout=5))
+    check("FIND publishes where both holds are now",
+          sorted(ex.stances.get("part") or {}) == ["A", "B"],
+          str(sorted(ex.stances.get("part") or {})))
+    found = ex.stances["part"]
+    check("each keeps the height it was taught at — the correction has no Z",
+          all(abs(_mat_to_pose(found[a])[2] - 0.060 - 0.0) < 1e-9
+              for a in ("A", "B")),
+          str([round(_mat_to_pose(found[a])[2] * 1000, 1) for a in "AB"]))
+    check("and they stay 160 mm apart, because that is the workpiece",
+          abs(np.linalg.norm(found["A"][:3, 3] - found["B"][:3, 3]) - 0.160)
+          < 1e-9,
+          "%.3f m" % np.linalg.norm(found["A"][:3, 3] - found["B"][:3, 3]))
+
+    a_stances, b_stances = ex._stances_for("A"), ex._stances_for("B")
+    check("a column is given its own arm's hold and not the other's",
+          np.allclose(a_stances["part"], found["A"])
+          and np.allclose(b_stances["part"], found["B"])
+          and not np.allclose(a_stances["part"], b_stances["part"]))
+
+    held = resolve_target(make_target(stance="part"), points, stances=a_stances)
+    lifted = resolve_target(make_target(stance="part", offset=[0, 0, 0.05, 0, 0, 0]),
+                            points, stances=a_stances)
+    check("a column may hold it, and an approach is the same column offset",
+          abs((lifted[2] - held[2]) - 0.05) < 1e-9)
+
+    try:
+        resolve_target(make_target(stance="part"), points, stances={})
+        check("and holding what nothing has found is refused", False)
+    except ValueError as e:
+        check("and holding what nothing has found is refused",
+              "nothing has found it" in str(e), str(e)[:52])
+    ex.stances.clear()
+
+    cell.config.vision["box_size"] = [0.20, 0.10, 0.10]
+    try:
+        ex._execute(Step("FIND", into="part", reference="box_home", timeout=5))
+        check("a map fitted with another box is refused, not read through",
+              False, "it answered anyway")
+    except ProgramError as e:
+        check("a map fitted with another box is refused, not read through",
+              "map is a map of one plane" in str(e), str(e)[:56])
+    cell.config.vision["box_size"] = list(BOX)
+
     ex.surface.forget("box_home")
     try:
         ex._execute(Step("FIND", into="part", reference="box_home", timeout=5))
@@ -542,6 +720,7 @@ try:
         check("a surface with nothing taught on it does not fall back",
               "nothing was taught" in str(e), str(e)[:56])
     ex.surface = None
+    cell.config.vision["box_size"] = was_configured
 finally:
     vision.stop()
     ex.vision = None
@@ -700,6 +879,45 @@ check("and the whole delay is still owed after resume",
 
 ex.on_step = None
 ex.on_finished = None
+
+print("\nthe speed dial is a percentage of the cell, not of the step")
+fresh = Executor(cell, points)
+check("it comes up low rather than where the last run left it",
+      fresh.speed_pct == START_SPEED_PCT, "%.0f%%" % fresh.speed_pct)
+
+limits = cell.config.limits
+ex.set_speed_pct(50)
+check("50% of a solo line is half limits.max_lin_speed",
+      abs(ex._speed("max_lin_speed") - limits["max_lin_speed"] / 2) < 1e-12,
+      "%.0f mm/s" % (ex._speed("max_lin_speed") * 1000))
+check("and 50% of a carried one is half limits.object_lin_speed — a "
+      "workpiece between the grippers keeps its own ceiling",
+      abs(ex._speed("object_lin_speed") - limits["object_lin_speed"] / 2) < 1e-12,
+      "%.0f mm/s" % (ex._speed("object_lin_speed") * 1000))
+check("100% is the ceiling itself",
+      abs(ex.set_speed_pct(100) - 100.0) < 1e-12
+      and abs(ex._speed("max_lin_speed") - limits["max_lin_speed"]) < 1e-12)
+check("the dial cannot be turned past it, or down to a standstill",
+      ex.set_speed_pct(400) == MAX_SPEED_PCT
+      and ex.set_speed_pct(0) == MIN_SPEED_PCT,
+      "%.0f / %.0f" % (MAX_SPEED_PCT, MIN_SPEED_PCT))
+
+# What the dial replaced: a line taught at a crawl and one taught at speed
+# used to run at what was stamped on them. Now the dial governs both, so
+# turning it down slows a program uniformly instead of leaving fast lines fast.
+ex.set_speed_pct(25)
+crawl = make_target(pose=points.get("above_A"), motion="movel", speed=0.02)
+quick = make_target(pose=points.get("above_A"), motion="movel", speed=0.50)
+check("a speed stamped on the line no longer sets the pace",
+      ex._speed("max_lin_speed") == ex._speed("max_lin_speed")
+      and crawl["speed"] != quick["speed"]
+      and abs(ex._speed("max_lin_speed")
+              - 0.25 * limits["max_lin_speed"]) < 1e-12,
+      "%.0f mm/s whichever line" % (ex._speed("max_lin_speed") * 1000))
+check("but it is still carried in the step, so the file remembers the teach",
+      abs(crawl["speed"] - 0.02) < 1e-12 and abs(quick["speed"] - 0.50) < 1e-12)
+
+ex.set_speed_pct(START_SPEED_PCT)
 
 print()
 print("FAILURES: %d" % fail)

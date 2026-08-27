@@ -35,7 +35,10 @@ from PyQt5.QtWidgets import (
     QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
-from ...program.executor import ProgramError
+from ...axes import shown_pose
+from ...program.executor import (
+    MAX_SPEED_PCT, MIN_SPEED_PCT, START_SPEED_PCT, ProgramError,
+)
 from ...program.steps import KIND_LABEL, Program, Step, make_target
 from .. import style as S
 from .step_edit import StepEditDialog
@@ -244,19 +247,48 @@ class ProgramPanel(QWidget):
         button("↑", "move the step up", lambda: self._move(-1), 2, 10, 2)
         button("↓", "move the step down", lambda: self._move(+1), 3, 10, 2)
 
-        # -- the file, and what is stamped on what is recorded
-        button("💾 Save", "save this program to JSON", self._save, 3, 2, 2,
+        # -- how fast the run goes, then the file and what recording stamps
+        #
+        # The dial sits beside Load rather than out with the record box on the
+        # right, because it belongs to the left column's group: the things
+        # that act on the program as a whole, under the thumb that presses Run.
+        self.run_speed = QDoubleSpinBox()
+        self.run_speed.setRange(MIN_SPEED_PCT, MAX_SPEED_PCT)
+        self.run_speed.setDecimals(0)
+        self.run_speed.setValue(self.app.executor.speed_pct)
+        self.run_speed.setPrefix("▶ ")
+        self.run_speed.setSuffix(" %")
+        self.run_speed.setStyleSheet(S.field())
+        self.run_speed.setToolTip(
+            "how fast the whole program runs, as a percentage of what the "
+            "cell may do\n"
+            "100%% is limits.max_lin_speed for a line one arm runs alone and "
+            "limits.object_lin_speed\nfor a pair or coupled line, where both "
+            "arms are pushing the same workpiece\n\n"
+            "It governs every line, whatever speed was stamped on it when it "
+            "was taught.\nTurn it while a program is running and the next "
+            "line picks it up; the move already\non the wire finishes at the "
+            "speed it was sent with. It comes back at %.0f%% every\nlaunch "
+            "rather than remembering where it was left."
+            % START_SPEED_PCT)
+        self.run_speed.valueChanged.connect(self._set_run_speed)
+        cell(self.run_speed, 3, 2, 2)
+
+        button("💾 Save", "save this program to JSON", self._save, 3, 4, 2,
                S.PURPLE)
         self.loop_btn = button("🔁 Loop", "run it again when it reaches the end",
-                               self._set_loop, 3, 4, 2, checkable=True)
+                               self._set_loop, 3, 6, 2, checkable=True)
         self.speed = QDoubleSpinBox()
         self.speed.setRange(0, 500)
         self.speed.setDecimals(0)
         self.speed.setValue(120)
         self.speed.setSuffix(" mm/s")
         self.speed.setStyleSheet(S.field())
-        self.speed.setToolTip("speed stamped onto newly recorded steps")
-        cell(self.speed, 3, 6, 4)
+        self.speed.setToolTip(
+            "speed stamped onto newly recorded steps, and saved with them\n"
+            "It is what the line was taught at, not what it runs at — the "
+            "▶ %% dial sets that.")
+        cell(self.speed, 3, 8, 2)
 
         self._select_column("mirror")
         return page
@@ -357,6 +389,7 @@ class ProgramPanel(QWidget):
                                 programs=self.program_names(),
                                 labels=self.label_names(),
                                 corrections=self.correction_names(),
+                                surfaces=self.app.executor.taught_on_surface(),
                                 parent=self)
         if dialog.exec_() == QDialog.Accepted:
             return dialog.get_step()
@@ -447,6 +480,17 @@ class ProgramPanel(QWidget):
         self.app.log("%s started"
                      % ("line %d" % (only + 1) if only is not None
                         else "program"))
+
+    def _set_run_speed(self, pct):
+        """The dial, straight through to the executor.
+
+        Live rather than read at Run, so turning it down part way through a
+        program is a thing an operator can do -- which is the whole point of a
+        dial over a number in the file. The clamp lives in the executor, so
+        the box and whatever else may drive it cannot disagree about the
+        ceiling.
+        """
+        self.app.executor.set_speed_pct(pct)
 
     def _pause(self):
         executor = self.app.executor
@@ -579,7 +623,11 @@ class ProgramPanel(QWidget):
 
     @staticmethod
     def _pose_row(pose):
-        """mm and degrees, in the column widths the header is spaced to."""
+        """mm and degrees, in the column widths the header is spaced to.
+
+        Signed the way the jog keys are, so x rises while X+ is held.
+        """
+        pose = shown_pose(pose)
         return ("%8.1f%8.1f%8.1f%8.1f%8.1f%8.1f"
                 % (pose[0] * 1000, pose[1] * 1000, pose[2] * 1000,
                    *np.degrees(pose[3:])))

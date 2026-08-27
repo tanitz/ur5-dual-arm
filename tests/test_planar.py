@@ -293,6 +293,15 @@ check("and turns it the way the box turned",
       abs(math.degrees(math.atan2(correction[1, 0], correction[0, 0])) - 19)
       < 1e-4)
 
+store = PlaneFile(plane_map, box_size=SIZE, path=path)
+store.teach("older", taught_at)
+store.set_map(plane_map)                 # a re-fit that nobody re-taught after
+check("a reference older than the map it was measured through is named",
+      store.stale() == ["older"], store.description[-60:])
+store.teach("older", taught_at)
+check("and stops being named once it is taught again",
+      store.stale() == [], str(store.stale()))
+
 open(path, "w", encoding="utf-8").write("{ not json")
 try:
     PlaneFile.load(path)

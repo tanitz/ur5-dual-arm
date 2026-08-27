@@ -48,9 +48,12 @@ ARM_LABEL = {"A": "Arm A", "B": "Arm B", "both": "Both arms"}
 # drive one arm, and without an empty option every column reads as filled with
 # whatever the pickers happened to default to.
 UNUSED = "—"
-TARGET_KINDS = (UNUSED, "place", "place + offset", "offset", "here")
+TARGET_KINDS = (UNUSED, "place", "place + offset", "offset", "here",
+                "at box", "at box + offset")
 _TARGET_FROM_KIND = {"point": "place", "point_offset": "place + offset",
-                     "offset": "offset", "pose": "here"}
+                     "offset": "offset", "pose": "here",
+                     "stance": "at box", "stance_offset": "at box + offset"}
+_STANCE_KINDS = ("at box", "at box + offset")
 
 
 class ColumnEditor(QGroupBox):
@@ -81,13 +84,26 @@ class ColumnEditor(QGroupBox):
         self.frame_combo = self._combo(frames)
         self.motion_combo = self._combo(MOTIONS)
         self.speed = self._spin(0.0, 500.0, 0.0, decimals=0)
+        # Kept and saved, but no longer what the line runs at: the Program
+        # tab's ▶ % dial sets the pace for a whole run. This records what the
+        # step was taught at, which is what a program is re-timed against if
+        # per-line speeds ever come back.
+        self.speed.setToolTip(
+            "the speed this line was taught at, saved with it\n"
+            "What it actually runs at is the ▶ %% dial on the Program tab.")
         # what a FIND above this line has looked for. Carrying the target by
         # one of those is how a camera moves a taught pick.
         self.correct_combo = self._combo([""] + list(corrections or []))
+        # The same names: a FIND writes both the correction and, when the hold
+        # was taught as a distance from the box, where that hold is now. Which
+        # of the two a column wants is the choice of target above, not a
+        # second list to keep in step with this one.
+        self.stance_combo = self._combo([""] + list(corrections or []))
 
         self.rows = {
             "target": self._row(v, "target", self.target_combo),
             "point": self._row(v, "place", self.point_combo),
+            "hold": self._row(v, "hold", self.stance_combo),
             "frame": self._row(v, "frame", self.frame_combo),
         }
         self.offset_spins, self.offset_rows = {}, {}
@@ -144,16 +160,23 @@ class ColumnEditor(QGroupBox):
     def _target_changed(self):
         choice = self.target_combo.currentText()
         used = choice != UNUSED
-        wants_offset = choice in ("place + offset", "offset")
+        holding = choice in _STANCE_KINDS
+        wants_offset = choice in ("place + offset", "offset",
+                                  "at box + offset")
         self.rows["point"].setVisible(choice in ("place", "place + offset"))
+        self.rows["hold"].setVisible(holding)
         self.rows["frame"].setVisible(wants_offset)
         for axis in AXES:
             turning = axis.startswith("R")
             self.offset_rows[axis].setVisible(
                 wants_offset and (self.allow_rotation or not turning))
-        for key in ("motion", "speed", "correct"):
+        for key in ("motion", "speed"):
             if key in self.rows:
                 self.rows[key].setVisible(used)
+        # A hold is already where the box is. Offering to carry it by a
+        # correction as well would apply the box's movement twice.
+        if "correct" in self.rows:
+            self.rows["correct"].setVisible(used and not holding)
         self.here_btn.setVisible(choice == "here" and self.capture is not None)
 
     def _capture(self):
@@ -161,14 +184,30 @@ class ColumnEditor(QGroupBox):
         if pose is not None:
             self._pose = [float(v) for v in pose]
 
+    @staticmethod
+    def _keep(combo, value):
+        """Show a name the list does not have, rather than dropping it.
+
+        A non-editable combo silently ignores text that is not one of its
+        items, so a step naming a FIND that is written below it — or a place
+        that has since been renamed — would come back out of this editor with
+        that name quietly gone. Opening a line to read it must never be a way
+        of changing it.
+        """
+        if not value:
+            return
+        if combo.findText(str(value)) < 0:
+            combo.addItem(str(value))
+        combo.setCurrentText(str(value))
+
     # -- the target it describes -------------------------------------------
     def set_target(self, target):
         target = target or {}
         kind = target_kind(target)
         self.target_combo.setCurrentText(
             _TARGET_FROM_KIND[kind] if kind else UNUSED)
-        if target.get("point"):
-            self.point_combo.setCurrentText(target["point"])
+        self._keep(self.point_combo, target.get("point"))
+        self._keep(self.stance_combo, target.get("stance"))
         if target.get("frame"):
             self.frame_combo.setCurrentText(target["frame"])
         if target.get("offset") is not None:
@@ -178,8 +217,7 @@ class ColumnEditor(QGroupBox):
                     value * 1000.0 if i < 3 else np.degrees(value))
         if target.get("motion"):
             self.motion_combo.setCurrentText(target["motion"])
-        if target.get("correct_by"):
-            self.correct_combo.setCurrentText(target["correct_by"])
+        self._keep(self.correct_combo, target.get("correct_by"))
         if target.get("speed"):
             self.speed.setValue(float(target["speed"]) * 1000.0)
         self._pose = target.get("pose")
@@ -190,18 +228,21 @@ class ColumnEditor(QGroupBox):
         if choice == UNUSED:
             return {}
         offset = None
-        if choice in ("place + offset", "offset"):
+        if choice in ("place + offset", "offset", "at box + offset"):
             offset = [self.offset_spins[a].value() / 1000.0 for a in AXES[:3]]
             offset += [np.radians(self.offset_spins[a].value()) for a in AXES[3:]]
         point = (self.point_combo.currentText()
                  if choice in ("place", "place + offset") else None)
+        holding = choice in _STANCE_KINDS
         return make_target(
             point=point or None,
+            stance=(self.stance_combo.currentText() or None) if holding else None,
             pose=self._pose if choice == "here" else None,
             offset=offset, frame=self.frame_combo.currentText(),
             motion=(self.motion_combo.currentText()
                     if "motion" in self.rows else None),
-            correct_by=self.correct_combo.currentText() or None,
+            correct_by=(None if holding
+                        else self.correct_combo.currentText() or None),
             speed=self.speed.value() / 1000.0 if self.speed.value() > 0 else None)
 
 
@@ -209,7 +250,8 @@ class StepEditDialog(QDialog):
     """Edit one step. Returns a new Step, or nothing if it was cancelled."""
 
     def __init__(self, step, points, cell=None, held_object=None,
-                 programs=None, labels=None, corrections=None, parent=None):
+                 programs=None, labels=None, corrections=None, surfaces=None,
+                 parent=None):
         super().__init__(parent)
         self.step = step
         self.points = points
@@ -218,6 +260,13 @@ class StepEditDialog(QDialog):
         self.programs = list(programs or [])
         self.labels = list(labels or [])
         self.corrections = list(corrections or [])
+        # Where a FIND's reference is looked up, which is not a preference:
+        # a cell that reads the box off a surface measures against a placement
+        # the camera recorded, and one that solves its full pose measures
+        # against a point somebody jogged to. None means there is no map, and
+        # points are the only answer. Same rule the checker applies, and they
+        # have to agree or the editor offers names the program then refuses.
+        self.surfaces = None if surfaces is None else sorted(surfaces)
         self.setWindowTitle("Edit  %s" % step.kind)
         self.setMinimumWidth(S.sx(560))
 
@@ -404,10 +453,35 @@ class StepEditDialog(QDialog):
                                       "whether there was anything")
             v.addWidget(QLabel("call the correction"))
             v.addWidget(self.name_edit)
-            v.addWidget(QLabel("where the box was when the pick was taught"))
-            self.point_pick = self._pick([""] + self.points.names(),
-                                         step.get("reference", ""))
+            taught = (self.points.names() if self.surfaces is None
+                      else self.surfaces)
+            v.addWidget(QLabel(
+                "where the box was when the pick was taught"
+                + ("" if self.surfaces is None
+                   else "  —  taught on the Camera tab, not a point")))
+            # Keep whatever the step already names even when it is not on the
+            # list: a program opened on a cell whose map has been refitted
+            # should show what it says, not silently lose it.
+            stored = step.get("reference", "")
+            if stored and stored not in taught:
+                taught = list(taught) + [stored]
+            self.point_pick = self._pick([""] + list(taught), stored)
             v.addWidget(self.point_pick)
+            if not taught:
+                nowhere = QLabel(
+                    "nothing has been taught yet. On the Camera tab, press "
+                    "Create Home Box, jog the gripper to its pre-pick pose, "
+                    "keep the box visible and press Save arm + object. The "
+                    "new reference appears here immediately. The box's size "
+                    "is set there too and is a separate thing: it says what "
+                    "the box is, not where it was."
+                    if self.surfaces is not None else
+                    "no points are taught yet — teach the place the box stood "
+                    "at from the Points tab.")
+                nowhere.setWordWrap(True)
+                nowhere.setStyleSheet(
+                    f"font-size:{S.fpx(11)}px;color:{S.AMBER};")
+                v.addWidget(nowhere)
             self.timeout = self._num(0, 120, step.get("timeout", 5.0) or 5.0,
                                      decimals=1)
             self.timeout.setSuffix(" s to wait for a reading")

@@ -27,6 +27,7 @@ from PyQt5.QtWidgets import (
     QComboBox, QDialog, QHBoxLayout, QLabel, QVBoxLayout, QWidget,
 )
 
+from ...axes import WORLD_AXIS_SIGN
 from ...geometry.kinematics import mat_to_pose, rotvec_to_mat
 from ...robot import motion as M
 from .. import style as S
@@ -35,10 +36,6 @@ from ..widgets.monitor import ArmMonitor, CompactArmMonitor, PairMonitor
 
 ARM_FRAMES = ("world", "base", "tool", "joint")
 PAIR_IDS = ("A", "B")
-
-# On this mast the work area is on world -X. The operator-facing X+ button
-# means "out from the mast", so only that displayed axis is reversed.
-WORLD_AXIS_SIGN = (-1.0, 1.0, 1.0)
 
 
 class JogPanel(QWidget):

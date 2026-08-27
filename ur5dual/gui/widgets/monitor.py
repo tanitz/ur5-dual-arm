@@ -13,6 +13,7 @@ import math
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QGridLayout, QGroupBox, QHBoxLayout, QLabel
 
+from ...axes import shown_xyz
 from .. import style as S
 
 
@@ -62,8 +63,9 @@ class ArmMonitor(QGroupBox):
         except (OSError, ConnectionError):
             return self.clear("stream lost")
 
+        xyz = shown_xyz(pose)
         for i in range(3):
-            self.pose_lbls[i].setText("%7.1f" % (pose[i] * 1000.0))
+            self.pose_lbls[i].setText("%7.1f" % (xyz[i] * 1000.0))
             self.pose_lbls[3 + i].setText("%7.2f" % math.degrees(pose[3 + i]))
         for i, q in enumerate(state["q_actual"]):
             self.joint_lbls[i].setText("%7.2f" % math.degrees(q))
@@ -136,7 +138,7 @@ class CompactArmMonitor(QGroupBox):
             return self.clear("stream lost")
 
         self.pose_lbl.setText("XYZ %.0f  %.0f  %.0f mm" %
-                              tuple(v * 1000.0 for v in pose[:3]))
+                              tuple(v * 1000.0 for v in shown_xyz(pose)))
         force = arm.tcp_force_magnitude()
         hot = force > force_limit
         self.force_lbl.setText("%.0f N" % force)

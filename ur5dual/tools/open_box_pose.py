@@ -44,7 +44,7 @@ import numpy as np
 from ..config import DEFAULT_PATH, CellConfig
 from ..vision.camera import CameraError
 from ..vision.detect import AGREE_MM, DetectionError, OpenBoxDetector, \
-    detect_opening_quad, size_check, solve_opening_pnp
+    detect_opening_quad, image_relative_xyz, size_check, solve_opening_pnp
 from ..vision.rim import STANDARD_SIZES, choose_size
 from .snap import DEFAULT_DIR, load, opencv, open_camera, save_npz, unused
 
@@ -88,7 +88,7 @@ def project(intrinsics, points):
 
 
 def draw_box(image, frame, found):
-    """The solved box as a wireframe, with its axes at the opening's centre.
+    """The solved box, with axes on the rim opposite the upper image edge.
 
     The rim is drawn in green and the floor in orange, and it is the floor
     that is worth looking at: the rim was fitted to the corners and will lie
@@ -106,9 +106,10 @@ def draw_box(image, frame, found):
         cv2.line(image, tuple(pixels[i]), tuple(pixels[i + 4]), WALL, 2)
 
     axis = min(found.size) * 0.28
-    origin = project(frame.intrinsics, found.centre)
+    origin_3d = found.display_axis_origin()
+    origin = project(frame.intrinsics, origin_3d)
     ends = project(frame.intrinsics,
-                   [found.centre + found.rotation[:, i] * axis
+                   [origin_3d + found.rotation[:, i] * axis
                     for i in range(3)])
     if origin is not None and ends is not None:
         start = tuple(origin[0].astype(int))
@@ -127,7 +128,8 @@ def depth_picture(depth, z_max=3.0):
     return view
 
 
-def overlay(frame, found, notes, show_depth, fps, cost, size, measured):
+def overlay(frame, found, notes, show_depth, fps, cost, size, measured,
+            surface=None, floor=None):
     """One finished frame for the window."""
     view = (depth_picture(frame.depth) if show_depth
             else np.ascontiguousarray(frame.color).copy())
@@ -146,9 +148,15 @@ def overlay(frame, found, notes, show_depth, fps, cost, size, measured):
           % (size[0] * 1000, size[1] * 1000,
              "   (measured)" if measured else ""), (8, 44))
     if found is not None:
-        centre = found.centre * 1000
-        label(view, "xyz %+.0f %+.0f %+.0f mm   rmse %.1f px"
-              % (*centre, found.reprojection_error), (8, 66))
+        levelled = image_relative_xyz(found, frame, surface, floor)
+        if levelled is None:
+            centre = found.centre * 1000
+            position = "camera xyz %+.0f %+.0f %+.0f mm" % tuple(centre)
+        else:
+            position = "xyz R/F/H %+.0f %+.0f %+.0f mm" % tuple(
+                levelled * 1000)
+        label(view, "%s   rmse %.1f px" %
+              (position, found.reprojection_error), (8, 66))
         label(view, size_check(found), (8, 88),
               GOOD if agrees(found) else BUSY)
     else:
@@ -215,6 +223,12 @@ def run_once(frame, detector, args, log=print):
         % (found.size[0] * 1000, found.size[1] * 1000))
     log("translation mm : %s" % np.round(transform[:3, 3] * 1000, 1))
     log("distance       : %.4f m" % float(np.linalg.norm(transform[:3, 3])))
+    levelled = image_relative_xyz(found, frame, detector.surface,
+                                  detector.floor)
+    if levelled is not None:
+        datum = "floor / IMU" if detector.floor is not None else "surface"
+        log("right/front/height mm (%s): %s"
+            % (datum, np.round(levelled * 1000, 1)))
     log("reprojection   : %.2f px" % found.reprojection_error)
     log("depth at centre: %.4f m" % found.depth_center)
     log("%s" % size_check(found))
@@ -222,7 +236,8 @@ def run_once(frame, detector, args, log=print):
     if args.vis and frame.color is not None:
         cv2 = opencv()
         cv2.imwrite(args.vis, overlay(frame, found, notes, False, 0.0, 0.0,
-                                      found.size, args.measure))
+                                      found.size, args.measure,
+                                      detector.surface, detector.floor))
         log("[+] wrote %s" % args.vis)
     return 0
 
@@ -311,9 +326,13 @@ def run_live(camera, detector, args, log=print):
                             % (size[0] * 1000, size[1] * 1000, off * 1000))
 
                 if found is not None and now - said >= args.report:
-                    log("xyz mm %+7.1f %+7.1f %+7.1f   %.0fx%.0f   "
+                    levelled = image_relative_xyz(
+                        found, frame, detector.surface, detector.floor)
+                    position = found.centre if levelled is None else levelled
+                    axes = "camera xyz" if levelled is None else "R/F/H"
+                    log("%s mm %+7.1f %+7.1f %+7.1f   %.0fx%.0f   "
                         "rmse %.1f px   %s   %s   %.0f fps"
-                        % (*(found.centre * 1000), found.size[0] * 1000,
+                        % (axes, *(position * 1000), found.size[0] * 1000,
                            found.size[1] * 1000, found.reprojection_error,
                            found.state, size_check(found), fps))
                     said = now
@@ -324,7 +343,8 @@ def run_live(camera, detector, args, log=print):
 
                 if not headless and frame.color is not None:
                     view = overlay(frame, found, notes, show_depth, fps, cost,
-                                   detector.box_size, measured)
+                                   detector.box_size, measured,
+                                   detector.surface, detector.floor)
 
             if headless:
                 if args.frames and frames >= args.frames:
@@ -429,7 +449,10 @@ def main():
         max_corner_jump=float(vision.get("max_corner_jump", 35.0)),
         confirm_frames=1 if args.npz else int(vision.get("confirm_frames", 4)),
         hold_frames=int(vision.get("hold_frames", 15)),
-        auto_size=args.measure)
+        auto_size=args.measure,
+        box_sizes=vision.get("box_sizes"),
+        surface=vision.get("surface"),
+        floor=vision.get("floor"))
 
     if args.npz:
         return run_once(load(args.npz), detector, args)
