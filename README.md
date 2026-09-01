@@ -60,8 +60,10 @@ the sidebar can be closed and STOP cannot.
 │ A -412.3  188.0  505.1   75.1   0.0   0.1│    │         │
 │ B -395.8 -190.4  504.7  -75.1   2.9  -4.9│    │         │
 │  # step   Arm A       Arm B     link     │A|AB│ ◎ Pts   │
-│  1 MOVE   home_A      home_B    ⇉ togeth │ |B │ ✥ Jog   │
-│  5 MOVE   world Z+100.0 ······  ⇉⇉ SYNC  │6 ax│         │
+│  1 MOVE   home_A      home_B    ⇉ togeth │ |B │ ◉ Cam   │
+│  5 MOVE   world Z+100.0 ······  ⇉⇉ SYNC  │6 ax│ ⇄ Com   │
+│  6 SEND   MC1 START             →        │    │ ✥ Jog   │
+│  7 RECV   wait for DONE from MC1 ←       │    │         │
 │ [▶ Run ][   insert ▾   ][＋][   ⧉ A+B    ]  │    │ ⇄  │
 │ [⏸Pause][● MOVEJ][↗ MOVEL][  A  ][  B  ]    │    │    │
 │ [■ Stop][▷To][✏Edit][⎘Dup][✕Del][   ↑   ]   │    │    │
@@ -71,21 +73,19 @@ the sidebar can be closed and STOP cannot.
 └─────────────────────────────────────────────────────────┘
 ```
 
-The program is the document being written and it is what the panel is for, so
-it takes every pixel the sidebar is not using: 884 px with a panel open, 1210
-px with the sidebar closed. **Every panel is the same 320 px**, so switching
+The program is the document being written and takes every pixel the sidebar is
+not using: about 692 px with a panel open, 1210 px with the sidebar closed.
+**Every panel is the same 512 px**, so switching
 between the jog keys and the points list does not slide the step table
 sideways under a finger — the sidebar changes what it holds, never how much
-room it takes. That matters because a line now carries two columns
-of targets — 350 px split five ways gave each arm 86, which is an ellipsis
-rather than a column, and 884 gives each of them 391.
+room it takes. The program still keeps both arm target columns visible while
+the camera and setup panels gain more working room.
 
 The rail is 56 px, it is never hidden, and it carries the panels as icons: the
 named places (`◎ Pts`), the camera (`◉ Cam`) and the jog grid (`✥ Jog`). Both are laid out for the
 one sidebar width: the points list stacks its teach buttons under the table
 rather than beside it, and shows each place's position with the rotation on
-the row's tooltip, because all six numbers want 45 characters and the sidebar
-has room for half of that. The lit icon is the open
+the row's tooltip, because all six numbers want 45 characters. The lit icon is the open
 panel and pressing it again closes the sidebar — **the way back is never behind
 the thing that took it away**, which is the whole reason the rail exists rather
 than a bare "wide" button.
@@ -139,6 +139,88 @@ drawer at the bottom; `Expand` opens its history. Compact A/B TCP and force
 readouts plus the pair gap sit below the Jog keys, and `Details` opens the full
 XYZ, RX/RY/RZ, J1–J6, force, robot/safety state, TCP gap, drift, and holding
 state in a separate window.
+
+## Desktop and browser together
+
+The optional browser UI is served by the same process as the desktop panel.
+There is still one `Cell`, one `Executor`, one camera service and one owner of
+the robot sockets. A command arriving over HTTP is queued onto Qt's main
+thread before it touches any of them; the resulting state is then broadcast
+over WebSocket to every open browser. A Run pressed in a browser therefore
+lights up as running on the desktop, and a Pause, box-size change or program
+edit made on the desktop appears in every browser.
+
+Install the two optional web dependencies once:
+
+```sh
+python3 -m pip install -r requirements-web.txt
+```
+
+For a browser on the same computer:
+
+```sh
+scripts/ur5dual-gui --web
+# open http://127.0.0.1:8765
+```
+
+For another computer or tablet on a trusted robot-cell LAN:
+
+```sh
+scripts/ur5dual-web
+```
+
+The terminal prints a URL containing this run's address and a new random
+access token — the address is read from the interface facing the default
+route, not from the hostname, so it is one another device can actually reach.
+Open that complete URL on the other device; the browser keeps the token in
+session storage and removes it from the address bar.
+
+A fresh token each run means a bookmark stops working after every restart.
+`--web-token` decides that instead — a fixed string keeps one URL valid across
+restarts, and `none` serves the LAN with no token at all, which puts both arms
+under the control of anything that can reach the port:
+
+```sh
+scripts/ur5dual-web --web-token cellkey   # http://<address>:8765/?token=cellkey
+scripts/ur5dual-web --web-token none      # http://<address>:8765/
+```
+
+Holding a jog button in a browser sends a press and then a heartbeat every
+100ms over the state WebSocket. Heartbeat arrival never waits behind Qt or
+camera work; the desktop timer refreshes `speedl`/`speedj` while that stream is
+live and drops the key if the browser goes quiet for longer than
+`WEB_JOG_GRACE`. The controller also kills motion after its shorter `WATCHDOG`
+when refreshes stop, so a lost browser, page or network cannot leave an old
+velocity command running.
+
+The browser has the same two-column shape as the desktop: Program remains in
+one column while Points, Camera, Communication or Jog occupies the other. `⇄`
+moves that sidebar to the other edge and each browser remembers its own side
+and selected tab. The Communication page contains TCP, UDP and Modbus machines
+in the same **Com** tab, matching the desktop rather than reviving the old Net
+and Modbus split. Robot state, the current program, points, communication
+library, camera settings and run/pause/stop state are shared.
+
+Camera pictures use their own binary WebSocket rather than repeated JPEG HTTP
+requests. The browser opens that stream only while Camera is visible and Live
+is running, displays new JPEG frames as they arrive, and closes it again on a
+different tab so image traffic can never queue ahead of Jog or state messages.
+
+A machine added, renamed, re-protocoled or deleted in a browser appears in the
+desktop tab's own tables, and a machine set up on the desktop appears in every
+browser; both surfaces read the one status line, so a `⇄ Test` started from a
+tablet says on the desktop whether the address answered. The browser's JSON
+editor is refused whole rather than in part: an unnamed machine or datum is an
+error there, where reading past it would delete a line somebody is looking at,
+even though the same entry is skipped when a hand-edited `cell.yaml` is loaded
+so that the panel still opens.
+
+Web Jog has an additional ownership and heartbeat guard. Only one browser may
+hold a jog command, it sends a heartbeat while the pointer is down, and a
+pointer release or WebSocket close explicitly halts that session. If the close
+cannot be delivered, the robot command watchdog stops motion in about 400 ms
+and the desktop clears ownership after `WEB_JOG_GRACE`. The web STOP is still a
+software stop and does not replace the cell's hard-wired emergency stop.
 
 ## Writing a program
 
@@ -294,6 +376,43 @@ rows of its own on the screen.
 `MOVE_ARM`, `MOVE_OBJ` and `ROTATE_OBJ` are how this was spelled before, and
 programs saved in that spelling still load: `Step.from_dict` translates them
 into `MOVE` lines and nothing on disk is rewritten until it is saved again.
+
+### Talking to the machine next door
+
+`SEND DATA` hands a machine one of the things it was set up to be sent, and
+`RECV DATA` holds the program until a machine sends what was set up. Both
+carry two **names** and no address:
+
+    SEND  MC1  START
+    RECV  MC1  DONE     up to 30 s
+
+The machine and the datum are set up once on the **Com** tab and the program
+only ever picks from those lists — the same bargain the point
+library makes for places. It is what makes a line checkable on paper: a step
+naming a machine that was deleted off the tab is a line of red text under the
+step list, where the same line carrying `10.1.68.200:2000` could only ever be
+caught by a program that hangs.
+
+Two steps rather than one with a direction field. Sending is over the moment
+it is sent; waiting is a step that can time out, and a line that reads the
+same either way hides which of the two it is. A `SEND` therefore never waits
+for a reply — the reply is the `RECV` on the next line, which is a line the
+operator can see and put a timeout on.
+
+`RECV` makes the same bargain `WAIT IN` does with a digital input: a timeout
+of **0 waits as long as it takes**, which is what a cell fed by a slow machine
+wants, and any other timeout **fails the program** rather than carrying on as
+though the signal had arrived. Carrying on is how an arm reaches into a
+fixture that is not ready.
+
+Its optional `into` puts the answer in a variable, so an `IF` below can branch
+on it. A reply that is a number is stored as that number; one that is not is
+stored as `1`, because it arriving is the whole of what it said.
+
+Anything already waiting is thrown away before a `SEND`. A reply left over
+from the last cycle would satisfy the next `RECV` the instant it looked, and a
+handshake that passes on stale data moves an arm for a reason nothing on
+screen shows.
 
 `docs/program_line_design.md` is the design this was chosen from, and
 `docs/drawings/make_layout_plates.py` draws the panel layouts that were
@@ -740,6 +859,65 @@ sudo udevadm control --reload-rules && sudo udevadm trigger
 
 then unplug the camera and plug it back in.
 
+## The machines beside the cell
+
+One **Com** tab on the rail — Communication — holding every machine the cell
+talks to whatever it speaks. The protocol is a **dropdown on the machine**, not a tab to have
+picked correctly first — a cell has *machines*, and which of them answers
+Modbus is a detail of how it is reached:
+
+| protocol | what a datum is | how waiting works |
+|---|---|---|
+| **TCP** | a string or a byte frame | the machine sends, and messages split on the link's terminator |
+| **UDP** | the same, as datagrams | one datagram is one message, terminator or not |
+| **Modbus TCP** | a number at a register address | nothing arrives — the cell reads the same register until it says what the step wanted |
+
+The tab is a list of machines and, under it, the named data items on whichever
+one is selected. `＋ Add` on the top list sets up a machine:
+
+| field | |
+|---|---|
+| name | what a program line calls it — `MC1`, `PLC1` |
+| protocol | TCP, UDP or Modbus TCP. The fields below it swap when this moves, rather than half of them sitting greyed out |
+| address, port | `10.1.68.200`, `2000` (choosing Modbus offers 502) |
+| connect in | how long *dialling* may take. Not how long a `RECV` waits — that is on the step |
+| ends with | TCP/UDP: what marks the end of one message, typed `\r\n`. It is added to everything sent and is what incoming bytes are split on. Empty for a machine that frames its own packets |
+| data / encoding | `string` with an encoding, or `hex` for a frame written `02 41 03` |
+| device id | Modbus only: the unit/slave id, usually 1 |
+
+`＋ Add` on the lower list names one datum on that machine:
+
+| field | |
+|---|---|
+| name | what the program line picks — `START`, `DONE`, `READY` |
+| way | `send` (the cell may put it on the wire), `recv` (the cell may wait for it), or `both` |
+| payload | TCP/UDP: the text or bytes it carries |
+| matches | `exact`, `contains` or `prefix` — for machines that append a sequence number nobody asked for |
+| table, register, value | Modbus: `coil`/`discrete in`/`holding reg`/`input reg`, the address, and the number to write or wait for |
+
+Changing a machine's protocol keeps its data items — they are what that
+machine carries — but a payload of `ST` is not a register value, so the tab
+says so beside the list that has to be gone through.
+
+The direction is enforced rather than decorative: a machine's "cycle done" is
+not something this cell may send, so it never appears in a `SEND` picker, and
+the checker refuses a line that names it there anyway. Modbus's two input
+tables are read-only in the protocol itself, and a `send` item on one is
+refused in the dialog that created it.
+
+`⇄ Test` opens the machine now and says whether it answered — the point is to
+fail on a tab, with a cursor in the field that is wrong, rather than three
+lines into a program with an arm already somewhere. `💾 Save` writes them into
+the `comms:` block of `cell.yaml`; edits take effect on the wire immediately,
+and the file is only where they survive a restart.
+
+Connections open on the first step that uses one and stay open. Nothing
+redials on its own: a machine that dropped the connection is a fact the
+operator needs told, and a link that silently redialled would turn a cable
+pulled out of a socket into a program that runs half a cycle late. Correcting
+a machine's port hangs up on it so the next step redials; naming another datum
+on it does not.
+
 ## Jogging by hand
 
 The Jog page drives arms, not objects. Arm A, synchronized A+B and arm B are
@@ -756,16 +934,15 @@ A+B is enabled only in world frame.
 
 The page used to keep all three targets up together, on the argument that a
 selector can leave an operator pressing a key for the arm they are not looking
-at. It is a 320 px sidebar now (`layout_f_side_open.svg`), which cannot hold
-three columns of finger-sized keys — 122x67 for one target, 37 across for
-three. So the argument was paid for rather than dropped: the live target's
+at. The 512 px sidebar still presents one target at a time so its motion keys
+stay large and the active arm remains unmistakable. The live target's
 button is filled rather than ticked, the band over the keys is the arm's own
 colour and names it, the keys carry that tint, and **changing target releases
 whatever key is held** so a press meant for one arm can never be inherited by
 the other. Nothing on the page is narrower than 74 px.
 
-What the width buys is on the other side of the screen: while jogging, each
-arm's column in the step table is 391 px instead of 92.
+The wider sidebar gives the camera and setup panels more working room while
+the program still retains both arm columns.
 
 `Synchronized A+B` is the single-arm world jog issued twice, once per arm,
 each direction resolved through that arm's own mounting transform. Two arms
@@ -893,6 +1070,14 @@ Robots' support site into `update/`.
 ## Configuration
 
 Everything lives in `config/cell.yaml`.
+
+`comms.links` is the machines the cell talks to — a name, a protocol, an
+address, and the named data items on it. Written by the Communication tab's 💾 Save,
+which rewrites that block alone and leaves every other key exactly as it found
+it.
+The terminator is stored the way it is typed (`"\r\n"`), so the file can be
+read and hand-edited without a hex dump. See
+[The machines beside the cell](#the-machines-beside-the-cell).
 
 `mount.style: pedestal` derives both arm bases from four numbers a fitter can
 measure — column height, flange spacing, outward tilt, pair yaw. Good enough

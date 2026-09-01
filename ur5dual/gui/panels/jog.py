@@ -3,8 +3,8 @@
 This page used to keep all three targets on screen at once, on the argument
 that a selector can leave an operator pressing a key for the arm they are not
 looking at. That argument has not gone away — it has been paid for instead.
-The page is a 320 px sidebar now, which cannot hold three columns of
-finger-sized keys, so one target shows at a time behind three large buttons.
+One target shows at a time behind three large buttons, keeping the motion keys
+large and leaving no ambiguity about which target owns them.
 
 What stops the selector being the hazard it was:
 

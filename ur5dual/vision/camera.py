@@ -228,9 +228,12 @@ class RealSenseCamera(Camera):
         color = frames.get_color_frame()
         if not depth:
             raise CameraError("no depth in this frame")
+        # Capture and detection run independently. Own the colour bytes before
+        # librealsense recycles its frame buffer for the next 30 Hz capture.
         return Frame(np.asanyarray(depth.get_data()) * self._scale,
                      self.intrinsics,
-                     color=np.asanyarray(color.get_data()) if color else None)
+                     color=(np.asanyarray(color.get_data()).copy()
+                            if color else None))
 
     def close(self):
         if self.pipeline is not None:

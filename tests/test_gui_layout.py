@@ -17,9 +17,9 @@ from PyQt5.QtWidgets import QApplication  # noqa: E402
 
 from ur5dual.axes import WORLD_AXIS_SIGN   # noqa: E402
 from ur5dual.cell import Cell             # noqa: E402
-from ur5dual.config import CellConfig     # noqa: E402
+from ur5dual.config import ARM_IDS, CellConfig    # noqa: E402
 from ur5dual.gui import style as S        # noqa: E402
-from ur5dual.gui.app import MainWindow    # noqa: E402
+from ur5dual.gui.app import MainWindow, connection_status   # noqa: E402
 from ur5dual.geometry.kinematics import mat_to_pose as _mat_to_pose  # noqa: E402
 from ur5dual.geometry.kinematics import pose_to_mat as _pose_to_mat  # noqa: E402
 from ur5dual.program.steps import Step                    # noqa: E402
@@ -47,6 +47,10 @@ S.set_scale(1.0)
 config = CellConfig.load()
 config.path = os.path.join(tempfile.mkdtemp(prefix="ur5dual-layout-"),
                            "cell.yaml")
+# Layout checks need a known first panel. The real cell remembers whichever
+# tab the operator last used, which must not decide whether this test passes.
+config.ui.update({"sidebar_side": "right", "sidebar_panel": "jog",
+                  "sidebar_open": True, "fullscreen": False})
 # And the simulated source, whatever the real cell is set to: the camera checks
 # below are written against a known box, and a RealSense plugged into the bench
 # would answer them with whatever is in front of it — as well as being taken
@@ -81,8 +85,7 @@ jog = window.panels["jog"]
 
 print("the full-width page")
 check("all three targets exist", list(jog.grids) == ["A", "AB", "B"])
-check("but only the chosen one is on screen — the sidebar is 320 px wide and "
-      "three columns of finger-sized keys do not fit",
+check("only the chosen jog target is on screen, keeping its keys large",
       [t for t in jog.grids if jog.target_columns[t].isVisible()] == [jog.target],
       str([t for t in jog.grids if jog.target_columns[t].isVisible()]))
 check("the choice is three buttons, not a closed drop-down",
@@ -93,8 +96,19 @@ check("and the live one is the one that is filled in",
       jog.target_btns[jog.target].isChecked()
       and not any(b.isChecked() for t, b in jog.target_btns.items()
                   if t != jog.target))
-check("STOP is global rather than owned by the Jog page",
-      window.stop_btn.isVisible() and window.stop_btn.parent() is not jog)
+# The bar carried a global STOP because the sidebar it used to live above can
+# be closed. It carries nothing now, at the operator's asking, and the three
+# ways this cell stops are the Program tab's own button, the pendant's E-stop,
+# and `stop_all` from the browser panel.
+check("the top bar has no buttons left on it at all",
+      not hasattr(window, "stop_btn"))
+check("stopping everything is still reachable, just not from here",
+      callable(window._stop_everything)
+      and "stop_all" in open(os.path.join(
+          os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+          "ur5dual", "gui", "app.py")).read())
+check("and the Program tab keeps a Stop of its own",
+      window.panels["program"].stop_btn.parent() is not None)
 check("the REAL mode selector is gone", not hasattr(window, "mode_combo"))
 check("the REAL control bar spans the whole panel",
       # It used to sit above the tab column. That column is a sidebar now and
@@ -102,10 +116,44 @@ check("the REAL control bar spans the whole panel",
       # live inside it -- least of all STOP.
       abs(window.safety_bar.width() - window.work.width()) <= 4,
       "%d vs %d" % (window.safety_bar.width(), window.work.width()))
-bar_controls = ([window.real_indicator] + list(window.conn_btns.values()) +
-                list(window.dashboard_btns.values()) + [window.stop_btn])
-check("REAL, arm, dashboard and STOP controls share one row",
-      len({button.y() for button in bar_controls}) == 1)
+check("the bar is a connection status and nothing else",
+      window.conn_btns == {} and window.dashboard_btns == {},
+      str(sorted(window.conn_btns) + sorted(window.dashboard_btns)))
+check("and the height the buttons took has gone back to the program",
+      window.safety_bar.height() <= 34,
+      "%d px" % window.safety_bar.height())
+# Shape rather than colour: this sits on a red band, and an arm that is not
+# answering has to be tellable from one that is without picking green out of
+# red.
+check("the status names the mode and marks each arm",
+      window.real_indicator.text().startswith("SIM")
+      and window.real_indicator.text().count("●") == 2,
+      window.real_indicator.text())
+# The band was red whatever was happening, which on a REAL-only panel is a
+# warning nobody can act on -- and it spent the colour, so an arm that had
+# dropped off looked exactly like a cell that was fine.
+_all_on = {a: True for a in ARM_IDS}
+_none_on = {a: False for a in ARM_IDS}
+_half_on = {"A": True, "B": False}
+check("every arm answering is green, not a standing warning",
+      connection_status(False, _all_on)[1] == S.GREEN)
+check("one arm short is amber — the state worth catching early",
+      connection_status(False, _half_on)[1] == S.AMBER,
+      connection_status(False, _half_on)[0])
+check("nothing answering on a real cell is red",
+      connection_status(False, _none_on)[1] == S.RED)
+check("and a simulated cell is neither, so it claims neither",
+      connection_status(True, _all_on)[1] == S.SLATE)
+check("the dots still carry it too — colour alone is not a status",
+      connection_status(False, _half_on)[0].count("●") == 1
+      and connection_status(False, _half_on)[0].count("○") == 1,
+      connection_status(False, _half_on)[0])
+check("and the hover says which arm in words",
+      "arm B: not connected" in connection_status(False, _half_on)[2],
+      connection_status(False, _half_on)[2].replace("\n", " | "))
+check("and it stays short enough to read at a glance",
+      len(window.real_indicator.text()) <= 24,
+      "%d chars" % len(window.real_indicator.text()))
 check("the log starts collapsed", not window.msg_box.isVisible())
 check("all six Cartesian axes are always shown on the target that is up",
       [i for i, row in enumerate(jog.grids[jog.target].rows)
@@ -123,6 +171,9 @@ def body_order():
 
 check("the sidebar sits between the program and the rail",
       body_order() == [window.program_page, window.sidebar, window.rail])
+check("15 percent of the design width moves from the program to the sidebar",
+      window.sidebar.width() == 512,
+      "%d px" % window.sidebar.width())
 
 wide_before = window.program_page.width()
 window.rail.buttons["jog"].click()
@@ -209,6 +260,44 @@ app.processEvents()
 cam = window.panels["camera"]
 check("the rail carries it", "camera" in window.rail.buttons)
 check("and it opens in the sidebar", window.sidebar.currentWidget() is cam)
+check("the camera view grows with the wider sidebar",
+      cam.view.width() == 500 and cam.view.height() == 300,
+      "%d x %d" % (cam.view.width(), cam.view.height()))
+filled_pane = cam._scaled(np.zeros((480, 640, 3), dtype=np.uint8))
+check("the camera picture fills the frame instead of leaving side bars",
+      filled_pane.width() == cam.view.width()
+      and filled_pane.height() > cam.view.height(),
+      "%d x %d pane in %d x %d view" %
+      (filled_pane.width(), filled_pane.height(),
+       cam.view.width(), cam.view.height()))
+check("source and box size share one row",
+      cam.source_combo.y() == cam.size_combo.y())
+
+
+def _spans(widget):
+    """One widget's left and right edge, in the panel's own coordinates."""
+    left = widget.mapTo(cam, widget.rect().topLeft()).x()
+    return left, left + widget.width()
+
+
+# The three fields are how a size that is not on the dropdown gets onto it, so
+# they belong under the dropdown — exactly, at whatever UI scale. They used to
+# be positioned by a hand-tuned indent, which is an alignment that is right at
+# one scale and wrong at every other.
+check("the typed size lines up with the list it is the manual version of",
+      _spans(cam.length_spin)[0] == _spans(cam.size_combo)[0]
+      and _spans(cam.height_spin)[1] == _spans(cam.size_combo)[1],
+      "%s..%s under %s..%s" % (_spans(cam.length_spin)[0],
+                               _spans(cam.height_spin)[1],
+                               *_spans(cam.size_combo)))
+check("its three fields share one row, and their captions the row under it",
+      len({cam.length_spin.y(), cam.width_spin.y(), cam.height_spin.y()}) == 1)
+check("the number is not crowded by a unit the label above already gives",
+      cam.length_spin.suffix() == "", repr(cam.length_spin.suffix()))
+check("the camera's three action buttons share one compact row",
+      len({cam.live_btn.y(), cam.surface_btn.y(), cam.home_box_btn.y()}) == 1
+      and all(button.height() == 36 for button in
+              (cam.live_btn, cam.surface_btn, cam.home_box_btn)))
 check("the opening's own size is typed in, in millimetres",
       cam.length_spin.value() == 600 and cam.width_spin.value() == 400,
       "%s x %s" % (cam.length_spin.value(), cam.width_spin.value()))

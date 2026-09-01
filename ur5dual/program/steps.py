@@ -36,6 +36,7 @@ import math
 import numpy as np
 
 from ..axes import shown_xyz
+from ..comms.links import is_modbus
 from ..geometry.kinematics import (
     mat_to_pose, pose_to_mat, rotvec_to_mat,
 )
@@ -60,12 +61,18 @@ STEP_KINDS = {
     "SET_VAR": ("name", "op", "value"),
     # what the camera saw, against where the box was when the pick was taught
     "FIND":    ("into", "reference", "timeout"),
+    # the machines the cell stands next to: one named datum out, one waited
+    # for. `link` is the name the Communication tab gave the machine,
+    # the name it gave the datum, so a line carries two names and no address.
+    "SEND":    ("link", "item", "text"),
+    "RECV":    ("link", "item", "into", "timeout"),
 }
 
 # What a kind is called on screen, where the operator's name for it is not
 # the kind itself. The stored kind never changes with it: a program saved
 # before a rename still loads, and the executor still dispatches on "BARRIER".
-KIND_LABEL = {"BARRIER": "IN POSE"}
+KIND_LABEL = {"BARRIER": "IN POSE", "SEND": "SEND DATA",
+              "RECV": "RECV DATA"}
 
 # a UR's standard digital I/O, and the variables a program can count with
 IO_RANGE = 8
@@ -462,6 +469,10 @@ class Step:
             return ("look for the box, against %s -> %s"
                     % (f.get("reference", "?"), f.get("into", "?")),
                     None, None, "◉")
+        if self.kind == "SEND":
+            return (_send_text(f), None, None, "→")
+        if self.kind == "RECV":
+            return (_recv_text(f), None, None, "←")
         if self.kind == "CALL":
             repeat = int(f.get("repeat", 1) or 1)
             return ("run program '%s'%s" % (f.get("program", "?"),
@@ -514,6 +525,28 @@ def _if_text(f):
     text = "if %s  jump %s" % (test, f.get("target", "?"))
     if (f.get("otherwise") or "").strip():
         text += "  else jump %s" % f["otherwise"]
+    return text
+
+
+def _send_text(f):
+    link = f.get("link") or "?"
+    item = (f.get("item") or "").strip()
+    if item:
+        return "send %s to %s" % (item, link)
+    return "send %r to %s" % (f.get("text", ""), link)
+
+
+def _recv_text(f):
+    link = f.get("link") or "?"
+    item = (f.get("item") or "").strip()
+    timeout = float(f.get("timeout", 0) or 0)
+    text = ("wait for %s from %s" % (item, link) if item
+            else "read whatever %s sends" % link)
+    into = (f.get("into") or "").strip()
+    if into:
+        text += " -> %s" % into
+    if timeout:
+        text += "  (up to %.0f s)" % timeout
     return text
 
 
@@ -611,6 +644,12 @@ class Program:
         there is no map, and points are the only answer.
         """
         problems, warnings = [], []
+        # `getattr` rather than a bare call: `config` is duck-typed here —
+        # anything that can answer the calibration gate is a config as far as
+        # this function is concerned, and one that cannot name its links has
+        # none to check the names against.
+        naming = getattr(config, "link_library", None)
+        links = naming() if naming is not None else None
         placed = {"A": False, "B": False}   # is this arm's pose known by now?
         labels = self._labels(problems)
         found = {}                          # what a FIND has looked for so far
@@ -636,6 +675,8 @@ class Program:
             elif step.kind == "MOVE":
                 self._check_move(step, line, points, config, holding, placed,
                                  problems, warnings)
+            elif step.kind in ("SEND", "RECV"):
+                self._check_comms(step, line, links, problems)
             elif step.kind == "CALL":
                 if not (step.get("program") or "").strip():
                     problems.append("line %d: CALL names no program" % line)
@@ -739,6 +780,56 @@ class Program:
             if float(step.get("timeout", 0) or 0) < 0:
                 problems.append("line %d: a negative timeout waits for nothing"
                                 % line)
+
+    def _check_comms(self, step, line, links, problems):
+        """A SEND or a RECV, against the links this cell actually has.
+
+        Names rather than addresses is what makes this checkable at all: a
+        line naming a machine deleted off the Communication tab is a line that
+        can be caught on paper, where the same line carrying an IP address
+        could only ever be caught by a program that hangs.
+
+        Without a config there is no library to check against, and the names
+        are left alone rather than guessed at — the same rule the `pair`
+        calibration gate follows.
+        """
+        name = (step.get("link") or "").strip()
+        item_name = (step.get("item") or "").strip()
+        if not name:
+            problems.append("line %d: %s names no machine to talk to"
+                            % (line, step.kind))
+        if step.kind == "RECV" and float(step.get("timeout", 0) or 0) < 0:
+            problems.append("line %d: a negative timeout waits for nothing"
+                            % line)
+        if links is None or not name:
+            return
+
+        link = links.get(name)
+        if link is None:
+            problems.append("line %d: there is no machine called %r — set one "
+                            "up on the Communication tab" % (line, name))
+            return
+
+        direction = "send" if step.kind == "SEND" else "recv"
+        if not item_name:
+            if is_modbus(link):
+                # Modbus has no free text to fall back on: every exchange is a
+                # register, and a register nobody named is an address this
+                # line does not carry.
+                problems.append("line %d: %s talks to %s in registers — pick "
+                                "one of its data items" % (line, step.kind, name))
+            elif step.kind == "SEND" and not str(step.get("text", "")):
+                problems.append("line %d: SEND has nothing to send to %s"
+                                % (line, name))
+            return
+
+        item = links.item(name, item_name)
+        if item is None:
+            problems.append("line %d: %s has no data item called %r — add it "
+                            "on the tab" % (line, name, item_name))
+        elif item.get("direction", "both") not in (direction, "both"):
+            problems.append("line %d: %s %s is set up to %s only"
+                            % (line, name, item_name, item.get("direction")))
 
     def _check_flow(self, step, line, labels, problems):
         if step.kind == "SET_VAR":

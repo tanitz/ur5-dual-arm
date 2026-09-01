@@ -23,6 +23,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget,
 )
 
+from ...comms.links import KIND_LABEL as LINK_KIND_LABEL, describe_item, is_modbus
 from ...program.steps import (
     ARM_FRAMES, COMPARES, IF_SOURCES, IO_RANGE, MOTIONS, OBJECT_FRAMES,
     PAIR_FRAMES, VAR_OPS, Step, make_target, target_kind,
@@ -251,10 +252,14 @@ class StepEditDialog(QDialog):
 
     def __init__(self, step, points, cell=None, held_object=None,
                  programs=None, labels=None, corrections=None, surfaces=None,
-                 parent=None):
+                 links=None, parent=None):
         super().__init__(parent)
         self.step = step
         self.points = points
+        # The machines set up on the Communication tab. SEND and RECV pick
+        # two names off these lists and carries no address, which is what lets
+        # the checker catch a deleted machine on paper.
+        self.links = links
         self.cell = cell
         self.held_object = held_object
         self.programs = list(programs or [])
@@ -333,6 +338,8 @@ class StepEditDialog(QDialog):
         self.name_edit = self.op_combo = self.value_spin = None
         self.source_combo = self.compare_combo = None
         self.target_combo = self.else_combo = None
+        self.link_pick = self.item_pick = self.text_edit = None
+        self.text_row = self.into_edit = None
         return self._fill_simple(page, v, step)
 
     def _pick(self, items, current=None, height=34):
@@ -486,6 +493,8 @@ class StepEditDialog(QDialog):
                                      decimals=1)
             self.timeout.setSuffix(" s to wait for a reading")
             v.addWidget(self.timeout)
+        elif step.kind in ("SEND", "RECV"):
+            self._fill_comms(v, step)
         elif step.kind == "CALL":
             self.program_combo = QComboBox()
             self.program_combo.addItems(self.programs)
@@ -527,6 +536,120 @@ class StepEditDialog(QDialog):
         else:
             return None
         return page
+
+    # -- talking to a machine ---------------------------------------------
+    def _fill_comms(self, v, step):
+        """A SEND or a RECV: two names, and how long to wait for the second.
+
+        Both lists come from the tabs rather than from this dialog, and are
+        filtered by direction: a machine's "cycle done" is not something this
+        cell may send, and offering it under SEND would be offering a line
+        that cannot run. A name the tabs no longer have is kept anyway — a
+        program opened on another cell must show what it says, not quietly
+        lose it.
+        """
+        sending = step.kind == "SEND"
+        v.addWidget(QLabel("put a named datum on the wire" if sending else
+                           "hold here until the machine sends what is asked"))
+
+        names = self.links.names() if self.links is not None else []
+        self.link_pick = self._pick([""] + list(names), step.get("link", ""))
+        # Adding the name is not selecting it. `_pick` ignores a current value
+        # its list does not have, so a machine this cell never had would come
+        # back out of the editor blank — opening a line to read it must never
+        # be a way of changing it.
+        self._keep_text(self.link_pick, step.get("link", ""))
+        self.link_pick.setCurrentText(str(step.get("link", "") or ""))
+        self.link_pick.currentIndexChanged.connect(
+            lambda *_a: self._link_changed(sending))
+        v.addWidget(QLabel("machine"))
+        v.addWidget(self.link_pick)
+
+        self.item_pick = self._pick([""])
+        v.addWidget(QLabel("data" if sending else "wait for"))
+        v.addWidget(self.item_pick)
+
+        if sending:
+            self.text_edit = QLineEdit(str(step.get("text", "") or ""))
+            self.text_edit.setMinimumHeight(S.sx(34))
+            self.text_edit.setStyleSheet(S.field())
+            self.text_edit.setToolTip(
+                "sent as typed, with the link's terminator added\n"
+                "Only for a one-off — a payload worth naming belongs on the "
+                "Communication tab, where a line can pick it by name.")
+            self.text_row = QWidget()
+            row = QVBoxLayout(self.text_row)
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(S.sx(4))
+            row.addWidget(QLabel("or type it, when no name fits"))
+            row.addWidget(self.text_edit)
+            v.addWidget(self.text_row)
+        else:
+            self.into_edit = QLineEdit(str(step.get("into", "") or ""))
+            self.into_edit.setMinimumHeight(S.sx(34))
+            self.into_edit.setStyleSheet(S.field())
+            self.into_edit.setToolTip(
+                "a variable to put the answer in, so an IF below can test it\n"
+                "A reply that is a number is stored as that number; one that "
+                "is not\nis stored as 1, because it arriving is the whole of "
+                "what it said.")
+            v.addWidget(QLabel("into (optional)"))
+            v.addWidget(self.into_edit)
+            self.timeout = self._num(0, 3600, step.get("timeout", 0) or 0,
+                                     decimals=1)
+            self.timeout.setSuffix(" s   (0 = wait as long as it takes)")
+            v.addWidget(self.timeout)
+
+        self.comms_hint = QLabel("")
+        self.comms_hint.setWordWrap(True)
+        self.comms_hint.setStyleSheet(f"font-size:{S.fpx(11)}px;color:#555555;")
+        v.addWidget(self.comms_hint)
+        if not names:
+            self.comms_hint.setStyleSheet(
+                f"font-size:{S.fpx(11)}px;color:{S.AMBER};")
+            self.comms_hint.setText(
+                "no machines are set up yet — add one on the Communication "
+                "tab, pick its protocol, give it a name like MC1, and name "
+                "the data it carries. Both appear here immediately.")
+        self._link_changed(sending, keep=step.get("item", ""))
+
+    def _link_changed(self, sending, keep=None):
+        """Refill the data list for whichever machine is now chosen."""
+        name = self.link_pick.currentText()
+        wanted = keep if keep is not None else self.item_pick.currentText()
+        link = self.links.get(name) if self.links is not None else None
+        items = (self.links.items_for(name, "send" if sending else "recv")
+                 if self.links is not None and link is not None else [])
+
+        self.item_pick.blockSignals(True)
+        self.item_pick.clear()
+        self.item_pick.addItems([""] + [i["name"] for i in items])
+        self._keep_text(self.item_pick, wanted)
+        self.item_pick.setCurrentText(str(wanted or ""))
+        self.item_pick.blockSignals(False)
+
+        # Modbus has no free text to fall back on: every exchange is a
+        # register, and a register nobody named is an address the line does
+        # not carry. So the escape hatch is hidden rather than left to fail.
+        modbus = is_modbus(link) if link else False
+        if self.text_row is not None:
+            self.text_row.setVisible(not modbus)
+        if link is not None and self.comms_hint.text().startswith("no machines"):
+            return
+        if link is not None:
+            chosen = next((i for i in items
+                           if i["name"] == self.item_pick.currentText()), None)
+            self.comms_hint.setText(
+                "%s  %s%s" % (LINK_KIND_LABEL.get(link.get("kind"), "?"),
+                              link.get("host", ""),
+                              "  —  " + describe_item(link, chosen)
+                              if chosen else ""))
+
+    @staticmethod
+    def _keep_text(combo, value):
+        """Show a name the list does not have, rather than dropping it."""
+        if value and combo.findText(str(value)) < 0:
+            combo.addItem(str(value))
 
     def _if_source_changed(self):
         """An IF tests one thing or the other, so it shows one or the other."""
@@ -644,6 +767,15 @@ class StepEditDialog(QDialog):
         elif kind == "FIND":
             fields = {"into": self.name_edit.text().strip(),
                       "reference": self.point_pick.currentText(),
+                      "timeout": float(self.timeout.value())}
+        elif kind == "SEND":
+            fields = {"link": self.link_pick.currentText(),
+                      "item": self.item_pick.currentText(),
+                      "text": self.text_edit.text()}
+        elif kind == "RECV":
+            fields = {"link": self.link_pick.currentText(),
+                      "item": self.item_pick.currentText(),
+                      "into": self.into_edit.text().strip(),
                       "timeout": float(self.timeout.value())}
         elif kind == "CALL":
             fields = {"program": (self.program_combo.currentText()

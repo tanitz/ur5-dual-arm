@@ -72,6 +72,13 @@ INSERTS = (
     ("FIND",         lambda: Step("FIND", into="part", reference="",
                                   timeout=5.0)),
     ("CALL",         lambda: Step("CALL", program="", repeat=1)),
+    # the machines beside the cell, by the names the Communication tab gave
+    # them. Two steps rather than one with a direction field: sending is over
+    # the moment it is sent, and waiting is a step that can time out, and a
+    # line that reads the same either way hides which of the two it is.
+    ("SEND DATA",    lambda: Step("SEND", link="", item="", text="")),
+    ("RECV DATA",    lambda: Step("RECV", link="", item="", into="",
+                                  timeout=0.0)),
 )
 
 # the colour a step kind is named in, so the list is scannable at a glance
@@ -85,7 +92,8 @@ KIND_COLOR = {"MOVE": "#1a5fa8", "OUT": "#2a7050", "WAIT_IN": "#2a7050",
               "ATTACH": "#5a3a8a", "DETACH": "#5a3a8a", "DELAY": "#8a5020",
               "BARRIER": "#8a5020", "WHERE": "#666666", "CALL": "#2a5a8a",
               "LABEL": "#8a5020", "JUMP": "#8a5020", "IF": "#8a5020",
-              "SET_VAR": "#8a5020", "FIND": "#1a5fa8"}
+              "SET_VAR": "#8a5020", "FIND": "#1a5fa8",
+              "SEND": "#2a7050", "RECV": "#2a7050"}
 
 
 class ProgramPanel(QWidget):
@@ -214,7 +222,10 @@ class ProgramPanel(QWidget):
             "WAIT IN      hold here until an input reads as asked\n"
             "IN POSE      wait for both arms to settle before going on\n"
             "FIND         look for the box, and correct the lines below it\n"
-            "CALL         run another saved program here, then carry on")
+            "CALL         run another saved program here, then carry on\n"
+            "SEND DATA    hand a machine one of the things it was set up to "
+            "be sent\n"
+            "RECV DATA    hold here until a machine sends what was set up")
         cell(self.insert_combo, 0, 2, 5)
         self.add_btn = button("＋", "insert the selected kind of step",
                               self._insert, 0, 7, 1, S.GREEN)
@@ -390,6 +401,7 @@ class ProgramPanel(QWidget):
                                 labels=self.label_names(),
                                 corrections=self.correction_names(),
                                 surfaces=self.app.executor.taught_on_surface(),
+                                links=self.app.link_library(),
                                 parent=self)
         if dialog.exec_() == QDialog.Accepted:
             return dialog.get_step()

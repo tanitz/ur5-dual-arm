@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Dual UR5 control</title>
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <header class="safety">
+    <div><strong>Dual UR5 control</strong><span id="linkState" class="pill warn">connecting</span></div>
+    <div id="armState" class="arm-state"></div>
+    <button id="globalStop" class="danger stop">■ STOP</button>
+  </header>
+
+  <main id="workspace" class="workspace">
+    <section id="program" class="program-column">
+      <div class="title-row"><h2>Program — teach &amp; run</h2><span id="programName"></span></div>
+      <div class="toolbar">
+        <button id="run" class="success">▶ Run</button>
+        <button id="pause" class="amber">⏸ Pause</button>
+        <button id="stop" class="danger">■ Stop</button>
+        <select id="programFiles"></select><button id="loadProgram">Load</button>
+        <button id="saveProgram">Save</button>
+      </div>
+      <div id="programProblem" class="problem"></div>
+      <div class="table-wrap"><table id="programTable"><thead><tr><th>#</th><th>step</th><th>Arm A</th><th>Arm B</th><th>link</th></tr></thead><tbody></tbody></table></div>
+      <details><summary>Edit program JSON</summary>
+        <textarea id="programJson" spellcheck="false"></textarea>
+        <button id="applyProgram" class="primary">Apply to Desktop</button>
+      </details>
+    </section>
+
+    <aside id="sideShell" class="side-shell">
+      <nav id="tabs" class="tabs">
+        <button data-tab="points" class="active">Pts</button>
+        <button data-tab="camera">Cam</button>
+        <button data-tab="comm">Com</button>
+        <button data-tab="jog">Jog</button>
+        <button id="swapSide" title="move this column to the other side">⇄</button>
+      </nav>
+
+    <section id="points" class="side-page active">
+      <div class="title-row"><h2>Named places</h2><span id="pointCount"></span></div>
+      <div class="toolbar">
+        <button data-teach="A" class="primary">Teach A</button>
+        <button data-teach="B" class="primary">Teach B</button>
+        <button id="savePoints">Save</button>
+      </div>
+      <div class="table-wrap"><table id="pointsTable"><thead><tr><th>name</th><th>x</th><th>y</th><th>z</th><th>rx</th><th>ry</th><th>rz</th><th></th></tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section id="camera" class="side-page">
+      <h2>Camera — open-box pose</h2>
+      <img id="cameraImage" class="camera" alt="camera has no frame yet">
+      <div id="cameraModes" class="segmented"><button data-mode="lens">lens</button><button data-mode="blend">blend</button><button data-mode="depth">depth</button></div>
+      <pre id="cameraReading">—</pre>
+      <div class="camera-controls">
+        <label>source <select id="cameraSource"><option>sim</option><option>realsense</option></select></label>
+        <label>box mm <select id="boxSize"></select></label>
+        <label>L <input id="boxL" type="number" min="50" max="2000" step="10"></label>
+        <label>W <input id="boxW" type="number" min="50" max="2000" step="10"></label>
+        <label>H <input id="boxH" type="number" min="10" max="2000" step="10"></label>
+      </div>
+      <div class="toolbar"><button id="cameraLive" class="success">▶ Live</button></div>
+    </section>
+
+    <section id="comm" class="side-page">
+      <div class="title-row"><h2>Communication — machines</h2><span id="commCount"></span></div>
+      <div class="table-wrap comm-machines"><table id="commTable"><thead><tr><th>name</th><th>protocol</th><th>address</th></tr></thead><tbody></tbody></table></div>
+      <div class="toolbar compact">
+        <button id="commAdd" class="success">＋ Add</button><button id="commEdit">✏ Edit</button><button id="commDelete" class="danger">✕ Del</button>
+      </div>
+      <h2 id="commDataTitle">Data</h2>
+      <div class="table-wrap comm-data"><table id="commData"><thead><tr><th>name</th><th>way</th><th>what</th></tr></thead><tbody></tbody></table></div>
+      <div class="toolbar compact">
+        <button id="dataAdd" class="success">＋ Add</button><button id="dataEdit">✏ Edit</button><button id="dataDelete" class="danger">✕ Del</button>
+      </div>
+      <div class="toolbar"><button id="commTest" class="primary">⇄ Test</button><button id="commSave">Save</button></div>
+      <div id="commStatus" class="readout"></div>
+      <details><summary>Edit Communication JSON</summary>
+        <textarea id="commJson" spellcheck="false"></textarea>
+        <button id="applyComm" class="primary">Apply to Desktop</button>
+      </details>
+    </section>
+
+    <section id="jog" class="side-page">
+      <h2>Jog</h2>
+      <div id="jogTargets" class="segmented"><button data-target="A">Arm A</button><button data-target="AB">A+B</button><button data-target="B">Arm B</button></div>
+      <div class="jog-options">
+        <select id="jogMotion"><option value="hold">Hold to move</option><option value="step">Step per press</option></select>
+        <select id="jogFrame"><option value="world">Cartesian — world</option><option value="base">Cartesian — base</option><option value="tool">Cartesian — tool</option><option value="joint">Joint J1-J6</option></select>
+      </div>
+      <div id="jogPresets" class="segmented"><button data-preset="0">1</button><button data-preset="1">2</button><button data-preset="2">3</button><button data-preset="3">4</button></div>
+      <div id="jogSize" class="readout"></div>
+      <div id="jogGrid" class="jog-grid"></div>
+      <div id="jogNote" class="problem"></div>
+      <p class="safety-note">Jog permission belongs to one browser at a time. Motion stops if its heartbeat or connection is lost.</p>
+    </section>
+    </aside>
+  </main>
+
+  <footer><span id="lastMessage">Ready</span></footer>
+  <script src="/assets/app.js?v=20260828-status-fast"></script>
+</body>
+</html>

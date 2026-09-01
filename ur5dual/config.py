@@ -259,6 +259,12 @@ DEFAULTS = {
         "max_correction": 0.10,       # m
         "max_correction_deg": 30.0,
     },
+    # The machines this cell stands next to, by the name a program calls them.
+    # A link is an address and a handful of named data items on it, so that a
+    # line reads `SEND MC1 START` rather than carrying an IP address and a
+    # byte string — the same bargain the point library makes for places.
+    # Set up on the Communication tab; see `comms/links.py` for the record.
+    "comms": {"links": []},
     "ui": {
         "sidebar_side": "right",    # right | left
         "sidebar_panel": "jog",     # points | vars | object | jog
@@ -414,6 +420,25 @@ class CellConfig:
         except FileNotFoundError:
             on_disk = {}
         on_disk["vision"] = copy.deepcopy(self._d["vision"])
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            f.write(HEADER)
+            yaml.safe_dump(on_disk, f, sort_keys=False, default_flow_style=None)
+        return path
+
+    def save_comms(self, path=None):
+        """Write back only the links, preserving unrelated cell data.
+
+        Same rule as `save_ui` and for the same reason: adding a machine on
+        the Communication tab must not also commit whatever else is unsaved.
+        """
+        path = path or self.path
+        try:
+            with open(path) as f:
+                on_disk = yaml.safe_load(f) or {}
+        except FileNotFoundError:
+            on_disk = {}
+        on_disk["comms"] = copy.deepcopy(self._d["comms"])
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w") as f:
             f.write(HEADER)
@@ -580,6 +605,24 @@ class CellConfig:
     @property
     def vision(self):
         return self._d["vision"]
+
+    @property
+    def comms(self):
+        return self._d["comms"]
+
+    def link_library(self):
+        """The links as an object, read fresh out of the block.
+
+        Built on demand rather than cached, because the tabs edit a library
+        and hand it back through `set_link_library` — one direction of travel,
+        and no second copy that can quietly disagree with the file.
+        """
+        from .comms import LinkLibrary
+        return LinkLibrary.from_list(self._d["comms"].get("links"))
+
+    def set_link_library(self, library):
+        self._d["comms"]["links"] = library.to_list()
+        return library
 
     def enabled_arms(self):
         return [a for a in ARM_IDS if self.arms[a].enabled]

@@ -148,13 +148,17 @@ class VisionService:
     def __init__(self, config=None, log=None):
         self.config = dict(config or {})
         self.log = log or (lambda text: None)
+        self.on_preview = None
         self.camera = None
         self.detector = None
         self.csv_log = None
         self.thread = None
+        self.capture_thread = None
         self._stop = threading.Event()
         self._lock = threading.Lock()
         self._reading = Reading(error="not started")
+        self._preview = None
+        self._preview_no = 0
         self._passes = 0                     # how many have *started*
         self._new = threading.Condition(self._lock)
 
@@ -183,13 +187,24 @@ class VisionService:
                 self.csv_log = None
                 self.log("camera log disabled: %s" % exc)
         self._stop.clear()
+        with self._new:
+            self._preview = None
+            self._preview_no = 0
+        self.capture_thread = threading.Thread(
+            target=self._capture, name="ur5dual-camera", daemon=True)
         self.thread = threading.Thread(target=self._run, daemon=True)
+        self.capture_thread.start()
         self.thread.start()
         self.log("camera: %s" % self.camera.description)
         return self
 
     def stop(self):
         self._stop.set()
+        with self._new:
+            self._new.notify_all()
+        if self.capture_thread is not None:
+            self.capture_thread.join(timeout=2.0)
+            self.capture_thread = None
         if self.thread is not None:
             self.thread.join(timeout=2.0)
             self.thread = None
@@ -205,7 +220,9 @@ class VisionService:
 
     @property
     def running(self):
-        return self.thread is not None and self.thread.is_alive()
+        return (self.thread is not None and self.thread.is_alive()
+                and self.capture_thread is not None
+                and self.capture_thread.is_alive())
 
     # -- what it saw -------------------------------------------------------
     def _set(self, reading):
@@ -217,6 +234,12 @@ class VisionService:
     def latest(self):
         with self._new:
             return self._reading
+
+    @property
+    def preview(self):
+        """Newest captured frame, independent of the slower detector."""
+        with self._new:
+            return self._preview, self._preview_no
 
     def refit(self):
         """Forget the temporal lock, so the opening is acquired afresh."""
@@ -250,13 +273,46 @@ class VisionService:
         }
 
     # -- the loop ----------------------------------------------------------
-    def _run(self):
+    def _capture(self):
+        """Keep the lens at source rate while detection consumes the newest."""
+        frame_period = 1.0 / max(1.0, float(self.config.get("fps", 30)))
         while not self._stop.is_set():
+            started = time.monotonic()
+            try:
+                frame = self.camera.read()
+                with self._new:
+                    self._preview = frame
+                    self._preview_no += 1
+                    self._new.notify_all()
+                if self.on_preview is not None:
+                    try:
+                        self.on_preview(frame)
+                    except Exception as exc:
+                        self.log("camera preview: %s" % exc)
+            except CameraError as exc:
+                self._set(Reading(error=str(exc)))
+                if self._stop.wait(0.05):
+                    break
+                continue
+            remaining = frame_period - (time.monotonic() - started)
+            if remaining > 0 and self._stop.wait(remaining):
+                break
+
+    def _run(self):
+        preview_no = 0
+        while not self._stop.is_set():
+            with self._new:
+                self._new.wait_for(
+                    lambda: self._stop.is_set()
+                    or self._preview_no > preview_no)
+                if self._stop.is_set():
+                    break
+                frame = self._preview
+                preview_no = self._preview_no
             with self._new:
                 self._passes += 1
                 started_as = self._passes
             try:
-                frame = self.camera.read()
                 notes = {}
                 detection = self.detector.find(frame, notes=notes)
                 reading = Reading(frame, detection, pass_no=started_as,

@@ -12,7 +12,9 @@ A+B, and arm B — instead of spending a third of that width on status.
 import argparse
 import json
 import os
+import socket
 import sys
+import threading
 import time
 
 import numpy as np
@@ -32,13 +34,16 @@ from ur5dual.cell import Cell                                 # noqa: E402
 from ur5dual.config import ARM_IDS, DEFAULT_PATH, CellConfig, in_repo  # noqa: E402
 from ur5dual.coupling import Coordinator, CouplingError       # noqa: E402
 from ur5dual.gui import style as S                            # noqa: E402
+from ur5dual.comms import LinkLibrary, LinkService            # noqa: E402
 from ur5dual.gui.panels.jog import JogPanel                   # noqa: E402
 from ur5dual.gui.panels.camera import CameraPanel             # noqa: E402
+from ur5dual.gui.panels.network import NetworkPanel           # noqa: E402
 from ur5dual.gui.panels.points import PointsPanel             # noqa: E402
 from ur5dual.gui.panels.program import ProgramPanel           # noqa: E402
-from ur5dual.gui.widgets.rail import IconRail                 # noqa: E402
+from ur5dual.gui.widgets.rail import RAIL_ITEMS, IconRail     # noqa: E402
 from ur5dual.program.executor import Executor                 # noqa: E402
-from ur5dual.program.steps import PointLibrary                # noqa: E402
+from ur5dual.program.steps import PointLibrary, Program       # noqa: E402
+from ur5dual.axes import shown_pose                            # noqa: E402
 from ur5dual.vision.planar import PlaneFile, sized_path        # noqa: E402
 from ur5dual.vision.service import VisionService              # noqa: E402
 
@@ -48,12 +53,10 @@ PAYLOAD_SUSPECT_N = 15.0
 POINTS_FILE = os.path.join(REPO_ROOT, "config", "points.json")
 PROGRAMS_DIR = os.path.join(REPO_ROOT, "config", "programs")
 
-# One width for every panel the sidebar can hold, and the reason is the program
-# rather than the panels: a sidebar that resized itself per page moved the step
-# table sideways every time an operator went from the jog keys to the points
-# list and back. 320 is what the jog keys need — layout_f_side_open.svg, one
-# target at a time — and the points list is laid out to that same width.
-SIDEBAR_W = 320
+# One width for every panel the sidebar can hold. Moving 15% of the 1280 px
+# design width from the program editor to this column gives the camera and
+# setup panels room without making the step table jump when tabs are changed.
+SIDEBAR_W = 320 + round(S.DESIGN_W * 0.15)
 
 # half the 1280x800 design width, less the margins between the two columns
 PROGRAM_COL_W = 620
@@ -66,6 +69,67 @@ PROGRAM_COL_MIN_W = 470
 # gets all of it and its design size back.
 TITLE_BAR_PX = 40
 
+# How long a browser may go quiet before the desktop lets go of its jog key.
+# This is not what stops the arm: a held jog refreshes speedl/speedj every
+# M.REFRESH and the controller kills the motion M.WATCHDOG after the last one,
+# so the arm has already coasted to a stop before this expires. The window only
+# has to outlast wifi jitter, which is why it is not tighter.
+WEB_JOG_GRACE = 0.75
+
+
+def lan_address(bind_host):
+    """The address to type into a browser for a server bound to `bind_host`.
+
+    A wildcard bind has no address of its own, and the hostname is no help to
+    a tablet that cannot resolve it, so the answer is the address on the
+    interface facing the default route — the one the cell LAN arrives on. The
+    UDP socket only names a local endpoint; nothing is sent.
+    """
+    if bind_host not in ("0.0.0.0", "::", ""):
+        return bind_host
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        probe.connect(("192.0.2.1", 9))     # TEST-NET-1: reserved, never routed
+        return probe.getsockname()[0]
+    except OSError:
+        return socket.gethostname()
+    finally:
+        probe.close()
+
+
+def connection_status(simulated, state):
+    """What the top strip says, what colour it is, and what it says on hover.
+
+    The band used to be red always, because red once meant REAL — these are
+    real robots and not a simulation. On a panel that is REAL-only that is a
+    warning nobody can act on and nobody keeps reading, and it cost the one
+    thing a status strip is for: with the colour already spent, an arm that
+    had dropped off looked exactly like a cell that was fine.
+
+    So the colour is the connection now, and REAL is a word instead:
+
+        green   every arm answering — the cell is as it should be
+        amber   some but not all, which is the state worth catching early
+        red     nothing answering, on a cell that expects to
+        slate   simulated, which is neither
+
+    The dots stay. Colour alone is not a status an operator who cannot pick
+    green out of amber can read, and this is the line they check before
+    pressing Run.
+    """
+    marks = "   ".join("%s %s" % (arm, "●" if state.get(arm) else "○")
+                       for arm in ARM_IDS)
+    if simulated:
+        return "SIM     %s" % marks, S.SLATE, "simulated test cell"
+
+    answering = [a for a in ARM_IDS if state.get(a)]
+    colour = (S.GREEN if len(answering) == len(ARM_IDS)
+              else S.AMBER if answering else S.RED)
+    tooltip = "\n".join("arm %s: %s" % (a, "connected" if state.get(a)
+                                         else "not connected")
+                        for a in ARM_IDS)
+    return "REAL     %s" % marks, colour, tooltip
+
 
 class MainWindow(QMainWindow):
     # Qt widgets may only be touched from the thread that created them, and
@@ -76,9 +140,16 @@ class MainWindow(QMainWindow):
     # down with it, which is what "Cannot queue arguments of type
     # 'QTextCursor'" is warning about just before the segfault.
     log_message = pyqtSignal(str)
+    web_command = pyqtSignal(object)
+    # A Test started from a browser opens the socket on a worker thread, for
+    # the reason the desktop's own Test does not: the answer must not hold the
+    # HTTP request, and a timing-out address would otherwise hold the whole Qt
+    # loop. The line it produces comes back through here.
+    comm_probe = pyqtSignal(str)
 
     def __init__(self, config_path=DEFAULT_PATH, cell=None,
-                 connect_on_start=True):
+                 connect_on_start=True, web_host=None, web_port=8765,
+                 web_token=None):
         super().__init__()
         self.setWindowTitle("Dual UR5 control")
 
@@ -101,6 +172,13 @@ class MainWindow(QMainWindow):
         # there yet loads as an empty one; a file that is there and unreadable
         # is worth stopping for, because the alternative is a cell that
         # quietly measures the box a different way than it was set up to.
+        # The machines the cell stands next to, and the sockets to them —
+        # owned here for the reason the camera is. The library is one object
+        # the two tabs edit in place; `links_changed` is how an edit reaches
+        # the config and the open connections.
+        self._links = self.cell.config.link_library()
+        self.links = LinkService(self._links, log=self.log)
+        self.executor.links = self.links
         self.surface = None
         self.reload_surface()
         self.coordinator_start_error = None
@@ -110,7 +188,20 @@ class MainWindow(QMainWindow):
         self.programs_dir = PROGRAMS_DIR
         os.makedirs(PROGRAMS_DIR, exist_ok=True)
 
+        self.web_hub = None
+        self.web_server = None
+        self._web_jog_owner = None
+        self._web_jog_target = None
+        self._web_jog_axis = None
+        self._web_jog_session = None
+        # client id -> when that browser was last heard from, stamped on the
+        # HTTP thread rather than on Qt's; see _start_web.
+        self._web_jog_seen = {}
+        self._web_jog_lock = threading.Lock()
+
         self.log_message.connect(self._append_log)
+        self.web_command.connect(self._handle_web_command)
+        self.comm_probe.connect(self._comm_probed)
         self._build()
         self._load_points()
         for panel in self.panels.values():
@@ -121,7 +212,9 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(self._tick)
         self.timer.start(60)
 
-        self._refresh_connect_buttons()
+        self._refresh_connection()
+        if web_host:
+            self._start_web(web_host, web_port, web_token)
         if connect_on_start and not self.cell.simulated:
             # Claim the RViz channel before either 30003 feed is opened; arm A
             # cannot serve the panel and viewer at the same time.
@@ -129,7 +222,7 @@ class MainWindow(QMainWindow):
                 self.cell.publish_sim_view(lease=20.0)
                 time.sleep(0.03)
             self.cell.connect()
-            self._refresh_connect_buttons()
+            self._refresh_connection()
 
     # ---- layout ----------------------------------------------------------
     def surface_path(self):
@@ -155,12 +248,40 @@ class MainWindow(QMainWindow):
         self.log("surface: %s" % self.surface.description)
         return self.surface
 
+    # ---- the machines beside the cell ------------------------------------
+    def link_library(self):
+        """The one library the Communication tab edits, and the executor reads.
+
+        One object rather than a copy: a panel holding its own would let the
+        cell have two answers to what it is connected to, and a program would
+        run against whichever was saved last.
+        """
+        return self._links
+
+    def links_changed(self):
+        """An edit made on the Communication tab, taken up now, not at Save.
+
+        Adding a machine and pressing Test has to reach the wire, and so does
+        a program run before anybody remembers to save — the file is where
+        this survives a restart, not where it takes effect.
+        """
+        self.cell.config.set_link_library(self._links)
+        self.links.reload(self._links)
+
+    def save_links(self):
+        self.cell.config.set_link_library(self._links)
+        path = self.cell.config.save_comms()
+        self.links.reload(self._links)
+        self.log("machines saved to %s" % path)
+        return path
+
     def _build(self):
         self.safety_bar = self._build_safety_bar()
         self.panels = {
             "program": ProgramPanel(self),
             "points": PointsPanel(self),
             "camera": CameraPanel(self),
+            "net": NetworkPanel(self),
             "jog": JogPanel(self),
         }
 
@@ -204,40 +325,48 @@ class MainWindow(QMainWindow):
         return page
 
     def _build_safety_bar(self):
-        """Controls that must remain visible regardless of the selected tab."""
+        """One line saying what the cell is talking to. No buttons.
+
+        It carried seven widgets: Connect/Drop per arm, Power, Brakes, Unlock,
+        and STOP. All seven are gone at the operator's asking, and each for its
+        own reason. The five in the middle were never pressed — this panel
+        connects on start, and these robots are powered and released from
+        their own pendants. STOP went last.
+
+        That leaves this cell three ways to stop, and it is worth being able
+        to name them: `■ Stop` on the Program tab ends the run, the pendant's
+        E-stop cuts the power, and `stop_all` from the browser panel still
+        calls `_stop_everything` — which is why that method stays whole below
+        rather than going with the button.
+
+        Nothing was deleted here either. `_toggle` and `_dashboard` still
+        work, and `conn_btns`/`dashboard_btns` are still the dicts they filled
+        — empty, so every loop over them is a no-op. Putting any of the seven
+        back is one `row.addWidget` in this method.
+
+        With no button left to stand beside, the band is a strip rather than a
+        52 px slab: the height it was is height the program now has. What it
+        is painted is `connection_status`, not this method.
+        """
         page = QWidget()
         row = QHBoxLayout(page)
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(S.sx(4))
 
-        self.real_indicator = QLabel("REAL  ●")
-        self.real_indicator.setMinimumHeight(S.sx(52))
+        # Named `real_indicator` still, because it is still that: what it adds
+        # is which arms are answering, which is the only thing the buttons
+        # beside it were being read for.
+        self.real_indicator = QLabel("REAL")
+        self.real_indicator.setMinimumHeight(S.sx(30))
         self.real_indicator.setAlignment(Qt.AlignCenter)
-        self.real_indicator.setStyleSheet(
-            f"background:{S.RED};color:white;font-weight:bold;"
-            f"font-size:{S.fpx(14)}px;border-radius:{S.sx(6)}px;")
+        # Colour and text both come from `_refresh_connection`, which runs
+        # before this is ever shown: a band painted here as well would be a
+        # second answer to what the cell is doing, and the wrong one for the
+        # first frame after every connect.
         row.addWidget(self.real_indicator, 1)
 
         self.conn_btns = {}
-        for arm_id in ARM_IDS:
-            button = S.touch_button("Connect %s" % arm_id, S.GREEN, height=52,
-                                    font_px=13)
-            button.clicked.connect(lambda _c=False, a=arm_id: self._toggle(a))
-            row.addWidget(button, 1)
-            self.conn_btns[arm_id] = button
-
         self.dashboard_btns = {}
-        for label, command in (("Power", "power on"),
-                               ("Brakes", "brake release"),
-                               ("Unlock", "unlock protective stop")):
-            button = S.touch_button(label, height=52, font_px=12)
-            button.clicked.connect(lambda _c=False, c=command: self._dashboard(c))
-            row.addWidget(button, 1)
-            self.dashboard_btns[label] = button
-
-        self.stop_btn = S.touch_button("■  STOP", S.RED, height=52, font_px=18)
-        self.stop_btn.clicked.connect(self._stop_everything)
-        row.addWidget(self.stop_btn, 2)
         return page
 
     def _build_messages(self):
@@ -280,9 +409,15 @@ class MainWindow(QMainWindow):
 
         The tab bar is gone because the rail is the tab bar — and unlike a tab
         bar it stays put when the panel it names is closed.
+
+        The stack is built from the rail's own list rather than from a second
+        one written here. The two lists drifting apart is not a hypothetical:
+        adding an icon and forgetting this line gives a rail button that lights
+        up and shows the panel that was already open, which reads as a panel
+        that failed to load rather than as a stack that never held it.
         """
         stack = QStackedWidget()
-        for panel_id in ("points", "camera", "jog"):
+        for panel_id, _glyph, _label, _tip in RAIL_ITEMS:
             stack.addWidget(self.panels[panel_id])
         stack.setCurrentWidget(self.panels["jog"])
         return stack
@@ -553,10 +688,21 @@ class MainWindow(QMainWindow):
             self.log("arm %s disconnected" % arm_id)
         else:
             self.cell.connect([arm_id])
-        self._refresh_connect_buttons()
+        self._refresh_connection()
 
-    def _refresh_connect_buttons(self):
+    def _refresh_connection(self):
+        """The one line that says what the cell is talking to."""
         sim = self.cell.simulated
+        state = {a: sim or self.cell.arms[a].connected for a in ARM_IDS}
+        text, colour, tooltip = connection_status(sim, state)
+        self.real_indicator.setText(text)
+        self.real_indicator.setToolTip(tooltip)
+        self.real_indicator.setStyleSheet(
+            f"background:{colour};color:white;font-weight:bold;"
+            f"font-size:{S.fpx(14)}px;border-radius:{S.sx(4)}px;"
+            f"letter-spacing:{S.sx(1)}px;")
+
+        # Empty unless a Connect/Drop button has been put back on the bar.
         for arm_id, button in self.conn_btns.items():
             connected = self.cell.arms[arm_id].connected
             if sim:
@@ -586,6 +732,14 @@ class MainWindow(QMainWindow):
                 self.log("arm %s  %s failed: %s" % (arm_id, command, e))
 
     def _stop_everything(self):
+        """Everything down: jog released, program stopped, servo loop shut,
+        arms halted.
+
+        No button on this window calls it any more — see `_build_safety_bar`.
+        The browser panel's `stop_all` does, and it is what a STOP put back on
+        the bar would be wired to.
+        """
+        self._release_web_jog()
         for panel in self.panels.values():
             if hasattr(panel, "release"):
                 panel.release()
@@ -621,6 +775,396 @@ class MainWindow(QMainWindow):
         for panel in self.panels.values():
             if hasattr(panel, "tick"):
                 panel.tick()
+        if self._web_jog_owner:
+            if not self._web_jog_live(self._web_jog_owner,
+                                      self._web_jog_session):
+                self._release_web_jog("web jog heartbeat lost — stopped")
+            elif self.panels["jog"].hold_mode and self._web_jog_axis:
+                jog = self.panels["jog"]
+                reason = jog._blocked_reason(self._web_jog_target)
+                if reason:
+                    self._release_web_jog(reason)
+                else:
+                    row, sign = self._web_jog_axis
+                    jog._ticked(self._web_jog_target, row, sign)
+        self._publish_web_state()
+
+    # ---- browser UI -----------------------------------------------------
+    def _start_web(self, host, port, token=None):
+        """Start the optional HTTP server beside this hardware-owning UI.
+
+        The token decides who may drive the arms from a browser. Left as None
+        a LAN run mints a fresh random one, which is safe but changes the URL
+        every restart; a fixed string keeps one bookmark working, and "none"
+        serves the LAN with no token at all.
+        """
+        import secrets
+        from ur5dual.web import WebHub, WebServer
+
+        def dispatch(payload):
+            # Jog liveness is stamped here, on the HTTP thread, and not where
+            # the command finally runs. Polling two arms and encoding a camera
+            # frame can hold Qt's loop past WEB_JOG_GRACE, and a browser that
+            # is still pressing must not lose the key — and take a 400 on every
+            # queued heartbeat — because the desktop was slow to listen.
+            if payload.get("action") in ("jog_press", "jog_heartbeat"):
+                self._mark_web_jog(payload)
+            request = {"payload": payload, "done": __import__("threading").Event(),
+                       "result": None, "error": None}
+            self.web_command.emit(request)
+            if not request["done"].wait(3.0):
+                raise TimeoutError("desktop did not answer the web command")
+            if request["error"] is not None:
+                raise request["error"]
+            return request["result"]
+
+        self.web_hub = WebHub(dispatch, jog_touch=self._mark_web_jog)
+        # Preview is produced on the capture thread before the slower box
+        # detector runs. JPEG encoding is pure NumPy/OpenCV, so it stays off
+        # Qt's UI/safety loop and can follow the RealSense source cadence.
+        self.vision.on_preview = self._publish_web_preview
+        remote = host not in ("127.0.0.1", "localhost", "::1")
+        if token is None:
+            token = secrets.token_urlsafe(18) if remote else None
+        elif token.strip().lower() in ("", "none", "off"):
+            token = None
+        self.web_server = WebServer(self.web_hub, host, port, token=token)
+        url = self.web_server.start()
+        if remote:
+            url = "http://%s:%d/%s" % (lan_address(host), int(port),
+                                       "?token=%s" % token if token else "")
+        self._publish_web_state()
+        note = ""
+        if remote:
+            note = " (trusted LAN only)" if token else " (trusted LAN, no token)"
+        self.log("web UI: %s%s" % (url, note))
+
+    def _handle_web_command(self, request):
+        try:
+            request["result"] = self._execute_web_command(request["payload"])
+        except Exception as exc:
+            request["error"] = exc
+        finally:
+            request["done"].set()
+
+    def _execute_web_command(self, command):
+        """Run one checked browser command on Qt's main thread."""
+        action = command.get("action")
+        program = self.panels["program"]
+        camera = self.panels["camera"]
+        jog = self.panels["jog"]
+
+        if action == "stop_all":
+            self._stop_everything()
+        elif action == "program_run":
+            program._run()
+        elif action == "program_pause":
+            if not self.executor.running:
+                raise ValueError("no program is running")
+            program._pause()
+        elif action == "program_stop":
+            program._stop()
+        elif action == "program_load":
+            name = os.path.basename(str(command.get("name") or ""))
+            path = os.path.join(self.programs_dir, name +
+                                ("" if name.endswith(".json") else ".json"))
+            if not name or not os.path.isfile(path):
+                raise ValueError("program not found")
+            program.program = Program.load(path)
+            program.loop_btn.setChecked(program.program.loop)
+            program.refresh()
+            self.log("loaded program %s from web" % name)
+        elif action == "program_set":
+            value = command.get("program")
+            if not isinstance(value, dict):
+                raise ValueError("program must be a JSON object")
+            replacement = Program.from_dict(value)
+            problems, _warnings = replacement.check(
+                self.points, self.cell.config,
+                surfaces=self.executor.taught_on_surface())
+            if problems:
+                raise ValueError("; ".join(problems[:3]))
+            program.program = replacement
+            program.loop_btn.setChecked(replacement.loop)
+            program.refresh()
+            self.log("program updated from web")
+        elif action == "program_save":
+            name = os.path.basename(program.program.name.strip())
+            if not name or name in (".", ".."):
+                raise ValueError("program needs a valid name")
+            path = os.path.join(self.programs_dir, name +
+                                ("" if name.endswith(".json") else ".json"))
+            program.program.save(path)
+            self.log("saved program to %s from web" % path)
+        elif action == "point_teach":
+            arm_id = str(command.get("arm") or "")
+            name = str(command.get("name") or "").strip()
+            if arm_id not in ARM_IDS or not name:
+                raise ValueError("point needs an arm and a name")
+            if not self.cell.arms[arm_id].connected:
+                raise ValueError("arm %s is not connected" % arm_id)
+            self.points.teach_arm(self.cell, arm_id, name)
+            self.panels["points"]._refresh_everywhere()
+            self.log("taught %s from arm %s on web" % (name, arm_id))
+        elif action == "point_delete":
+            name = str(command.get("name") or "")
+            if name not in self.points.points:
+                raise ValueError("point not found")
+            self.points.remove(name)
+            self.panels["points"]._refresh_everywhere()
+        elif action == "points_save":
+            self.save_points()
+            self.log("points saved from web")
+        elif action == "comm_set":
+            value = command.get("links")
+            if not isinstance(value, list) or any(
+                    not isinstance(link, dict) for link in value):
+                raise ValueError("links must be a JSON list of machines")
+            for link in value:
+                if not isinstance(link.get("data", []), list):
+                    raise ValueError("a machine's data must be a JSON list")
+            candidate = LinkLibrary.from_list(value)
+            # from_list drops what cannot be a machine or a datum, because a
+            # hand-edited cell.yaml must still open the panel. Typed into the
+            # browser's editor the same silence would delete a line the
+            # operator is looking at, so here the drop is the error.
+            if len(candidate.links) != len(value):
+                raise ValueError("every machine needs a name")
+            if [len(link["data"]) for link in candidate.links] != [
+                    len(link.get("data") or []) for link in value]:
+                raise ValueError("every data item needs a name")
+            problems = candidate.check()
+            if problems:
+                raise ValueError("; ".join(problems[:3]))
+            self._links.links = candidate.links
+            self.links_changed()
+            self.panels["net"].refresh()
+            program.refresh()
+            # _say rather than log: the tab's status line is what both
+            # surfaces show, so the desktop says where the change came from
+            # instead of silently growing a machine nobody on it added.
+            self.panels["net"]._say("Communication updated from web")
+        elif action == "comm_save":
+            problems = self._links.check()
+            if problems:
+                raise ValueError("; ".join(problems[:3]))
+            self.save_links()
+            self.panels["net"].refresh()
+            self.panels["net"].status.setText(
+                "saved %d machine(s)" % len(self._links.links))
+        elif action == "comm_test":
+            name = str(command.get("name") or "")
+            if self._links.get(name) is None:
+                raise ValueError("machine not found")
+            import threading
+
+            def probe():
+                self.comm_probe.emit(self.links.probe(name))
+
+            threading.Thread(target=probe, name="ur5dual-com-probe",
+                             daemon=True).start()
+        elif action == "camera_mode":
+            mode = str(command.get("mode") or "")
+            if mode not in camera.mode_btns:
+                raise ValueError("unknown camera mode")
+            camera._set_mode(mode)
+        elif action == "camera_live":
+            camera.live_btn.setChecked(bool(command.get("running")))
+            camera._toggle_live()
+        elif action == "camera_source":
+            source = str(command.get("source") or "")
+            if source not in ("sim", "realsense"):
+                raise ValueError("unknown camera source")
+            camera.source_combo.setCurrentText(source)
+        elif action == "camera_box":
+            values = command.get("box_mm")
+            if not isinstance(values, list) or len(values) != 3:
+                raise ValueError("box_mm needs length, width and height")
+            values = [int(v) for v in values]
+            if not (50 <= values[0] <= 2000 and
+                    50 <= values[1] <= 2000 and 10 <= values[2] <= 2000):
+                raise ValueError("box size is outside the allowed range")
+            for spin, value in zip(
+                    (camera.length_spin, camera.width_spin, camera.height_spin),
+                    values):
+                spin.setValue(value)
+            camera._size_settled()
+        elif action == "jog_config":
+            if self._web_jog_owner:
+                raise ValueError("release the web jog key first")
+            if "target" in command:
+                target = str(command["target"])
+                if target not in jog.grids:
+                    raise ValueError("unknown jog target")
+                jog._select_target(target)
+            if "frame" in command:
+                from ur5dual.gui.panels.jog import ARM_FRAMES
+                frame = str(command["frame"])
+                if frame not in ARM_FRAMES:
+                    raise ValueError("unknown jog frame")
+                jog.frame_combo.setCurrentIndex(ARM_FRAMES.index(frame))
+            if "hold_mode" in command:
+                jog.motion_combo.setCurrentIndex(
+                    0 if bool(command["hold_mode"]) else 1)
+            if "preset" in command:
+                preset = int(command["preset"])
+                if preset not in range(4):
+                    raise ValueError("unknown jog preset")
+                jog._set_preset(preset)
+        elif action == "jog_press":
+            client = str(command.get("client_id") or "")
+            session = str(command.get("session_id") or client)
+            target = str(command.get("target") or jog.target)
+            row, sign = int(command.get("row", -1)), int(command.get("sign", 0))
+            if not client or not session or target not in jog.grids or row not in range(6) \
+                    or sign not in (-1, 1):
+                raise ValueError("invalid jog command")
+            if (self._web_jog_owner and self._web_jog_owner != client and
+                    self._web_jog_live(self._web_jog_owner,
+                                       self._web_jog_session)):
+                raise ValueError("jog is owned by another browser")
+            reason = jog._blocked_reason(target)
+            if reason:
+                raise ValueError(reason)
+            self._web_jog_owner = client
+            self._web_jog_target = target
+            self._web_jog_axis = (row, sign)
+            self._web_jog_session = session
+            jog._pressed(target, row, sign)
+        elif action == "jog_heartbeat":
+            # dispatch() already stamped the arrival; this only says whose key
+            # it is, so a second browser cannot hold it open.
+            client = str(command.get("client_id") or "")
+            session = str(command.get("session_id") or client)
+            if (client, session) != (self._web_jog_owner,
+                                     self._web_jog_session):
+                raise ValueError("this browser does not own jog")
+        elif action == "jog_release":
+            client = str(command.get("client_id") or "")
+            session = str(command.get("session_id") or client)
+            # Releases are idempotent. A late packet from an old press must
+            # neither produce a 400 storm nor stop a newer jog session.
+            if (client, session) == (self._web_jog_owner,
+                                     self._web_jog_session):
+                self._release_web_jog()
+        else:
+            raise ValueError("unknown action: %s" % action)
+
+        self._publish_web_state()
+        return {"action": action}
+
+    def _comm_probed(self, text):
+        """What a browser's Test found, said on the tab that owns the link."""
+        self.panels["net"]._say(text)
+        self._publish_web_state()
+
+    def _mark_web_jog(self, command):
+        client = str(command.get("client_id") or "")
+        session = str(command.get("session_id") or client)
+        if client and session:
+            with self._web_jog_lock:
+                self._web_jog_seen[(client, session)] = time.monotonic()
+
+    def _web_jog_live(self, client, session=None):
+        """Has this browser been heard from inside the grace window?"""
+        session = str(session or client or "")
+        with self._web_jog_lock:
+            seen = self._web_jog_seen.get((client, session), 0.0)
+        return (time.monotonic() - seen) <= WEB_JOG_GRACE
+
+    def _release_web_jog(self, message=None):
+        if self._web_jog_target:
+            self.panels["jog"]._released(self._web_jog_target)
+        self._web_jog_owner = None
+        self._web_jog_target = None
+        self._web_jog_axis = None
+        self._web_jog_session = None
+        with self._web_jog_lock:
+            self._web_jog_seen.clear()
+        if message:
+            self.log(message)
+
+    def _web_state(self):
+        program_panel = self.panels["program"]
+        camera = self.panels["camera"]
+        jog = self.panels["jog"]
+        arms = {}
+        for arm_id in ARM_IDS:
+            arm = self.cell.arms[arm_id]
+            pose, pose_text = [], "—"
+            if arm.connected:
+                try:
+                    shown = shown_pose(arm.tcp_pose_world())
+                    pose = ([v * 1000 for v in shown[:3]] +
+                            list(np.degrees(shown[3:])))
+                    pose_text = "%+.0f %+.0f %+.0f mm" % tuple(pose[:3])
+                except (OSError, RuntimeError, ConnectionError, ValueError):
+                    pass
+            arms[arm_id] = {"connected": bool(arm.connected), "pose": pose,
+                            "pose_text": pose_text}
+
+        rows = []
+        for index, step in enumerate(program_panel.program.steps):
+            span, a, b, link = step.render()
+            rows.append({"index": index + 1 if step.enabled else "·",
+                         "kind": step.kind, "a": span or a, "b": "" if span else b,
+                         "link": link})
+        files = sorted(os.path.splitext(name)[0] for name in
+                       os.listdir(self.programs_dir) if name.endswith(".json"))
+        points = []
+        for name in self.points.names():
+            pose = shown_pose(self.points.get(name))
+            values = ([v * 1000 for v in pose[:3]] +
+                      list(np.degrees(pose[3:])))
+            points.append({"name": name, "pose": values})
+        sizes = []
+        for i in range(camera.size_combo.count()):
+            value = camera.size_combo.itemData(i)
+            if isinstance(value, tuple):
+                sizes.append(list(value))
+        return {
+            "arms": arms,
+            "last_message": self.last_message.text(),
+            "program": {
+                "name": program_panel.program.name,
+                "raw": program_panel.program.to_dict(), "rows": rows,
+                "files": files, "running": bool(self.executor.running),
+                "paused": bool(self.executor.paused),
+                "current": int(self.executor.current),
+                "problem": program_panel.problems.text(),
+            },
+            "points": points,
+            "comm": {
+                "links": self._links.to_list(),
+                "status": self.panels["net"].status.text(),
+            },
+            "camera": {
+                "running": bool(self.vision.running), "mode": camera.mode,
+                "reading": camera.found_lbl.text(),
+                "source": camera.source_combo.currentText(), "sizes": sizes,
+                "box_mm": [camera.length_spin.value(),
+                           camera.width_spin.value(), camera.height_spin.value()],
+            },
+            "jog": {
+                "target": jog.target, "frame": jog.frame,
+                "hold_mode": bool(jog.hold_mode), "preset": jog.preset,
+                "size": jog.size_lbl.text(), "note": jog.note.text(),
+                "web_owned": bool(self._web_jog_owner),
+            },
+        }
+
+    def _publish_web_state(self):
+        if self.web_hub is None:
+            return
+        self.web_hub.publish(self._web_state())
+
+    def _publish_web_preview(self, frame):
+        """Capture-thread path: raw frame to binary WebSocket without Qt."""
+        if self.web_hub is None or not self.web_hub.camera_streaming():
+            return
+        camera = self.panels["camera"].web_jpeg(frame, quality=74)
+        if camera is not None:
+            self.web_hub.publish_camera(camera)
 
     # ---- lifecycle -------------------------------------------------------
     def changeEvent(self, event):
@@ -631,8 +1175,13 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self.timer.stop()
+        self.vision.on_preview = None
+        self._release_web_jog()
         self.executor.stop()
         self.vision.stop()
+        if self.web_server is not None:
+            self.web_server.stop()
+        self.links.close_all()
         self.stop_coordinator()
         self.cell.disconnect()
         super().closeEvent(event)
@@ -651,6 +1200,16 @@ def main():
     parser.add_argument("--windowed", action="store_true",
                         help="run inside the desktop's window frame for this "
                              "run, maximised to the work area")
+    parser.add_argument("--web", action="store_true",
+                        help="serve the synchronized browser UI")
+    parser.add_argument("--web-host", default="127.0.0.1",
+                        help="web bind address; use 0.0.0.0 on a trusted LAN")
+    parser.add_argument("--web-port", type=int, default=8765,
+                        help="browser UI port (default: 8765)")
+    parser.add_argument("--web-token", default=None,
+                        help="fixed browser access token, so the URL survives "
+                             "a restart; 'none' serves the LAN with no token "
+                             "at all. Left out, every run mints a new one")
     args = parser.parse_args()
 
     app = QApplication(sys.argv)
@@ -683,7 +1242,10 @@ def main():
     else:
         S.fit_to(area.width(), height)
 
-    window = MainWindow(args.config)
+    window = MainWindow(args.config,
+                        web_host=args.web_host if args.web else None,
+                        web_port=args.web_port,
+                        web_token=args.web_token)
     # Maximised rather than resized to the design size: what the layout gets
     # over its minimum goes to the jog grid and the message log rather than to
     # wallpaper, and a window already the size of the screen leaves the

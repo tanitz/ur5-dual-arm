@@ -34,17 +34,34 @@ from .. import style as S
 RAIL_W = 56          # one finger, and the same 56 the drawings are dimensioned to
 ICON_H = 52
 
-# panel id, glyph, and the label under it. Order is the order they were tabs in.
+# panel id, glyph, the label under it, and what it is called in full.
+#
+# The label has one finger's width to live in, so it is abbreviated; the
+# tooltip is where the word it stands for goes. They used to be the same
+# string, which made every tooltip on this rail a repeat of the three letters
+# the operator was already looking at.
+#
+# The id is what `ui.sidebar_panel` stores, and it does not change when a
+# label does — the same rule a renamed step kind follows. `net` is the
+# Communication panel.
+#
+# Order is the order they were tabs in.
 #
 # Vars and Object were dropped from the rail: the cell's geometry is measured
 # with the command-line tools rather than typed at the pendant, and taking hold
 # is an ATTACH step in a program rather than a button. Both panels still exist
 # in gui/panels/ and neither is imported -- putting either back is one line
 # here and one in app._build.
+#
+# Com is Communication: the machines the cell stands next to, every one of
+# them, whatever it speaks. One icon and not one per protocol -- a cell has
+# machines, and whether a given one answers TCP, UDP or Modbus is a field on it
+# rather than a reason to keep half the equipment on a second page.
 RAIL_ITEMS = (
-    ("points", "◎", "Pts"),
-    ("camera", "◉", "Cam"),
-    ("jog", "✥", "Jog"),
+    ("points", "◎", "Pts", "Points — the named places"),
+    ("camera", "◉", "Cam", "Camera — finding the box"),
+    ("net", "⇄", "Com", "Communication — the machines this cell talks to"),
+    ("jog", "✥", "Jog", "Jog — driving the arms by hand"),
 )
 
 
@@ -73,10 +90,10 @@ class IconRail(QWidget):
         v.addWidget(self.toggle_btn)
 
         self.buttons = {}
-        for panel_id, glyph, label in RAIL_ITEMS:
+        for panel_id, glyph, label, tooltip in RAIL_ITEMS:
             button = S.touch_button("%s\n%s" % (glyph, label), height=ICON_H,
                                     font_px=13)
-            button.setToolTip(label)
+            button.setToolTip(tooltip)
             button.clicked.connect(
                 lambda _checked=False, p=panel_id: self.selected.emit(p))
             v.addWidget(button)

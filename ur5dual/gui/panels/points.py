@@ -42,9 +42,9 @@ class PointsPanel(QWidget):
         v.addWidget(S.strip("Named places"))
 
         # Only the position is on the row. All six numbers need about 45
-        # characters and the sidebar is 320 px wide, so the three that a
-        # taught place is picked by are shown and the rotation is on the
-        # row's tooltip -- clipped numbers would be worse than named ones.
+        # characters, so the three that a taught place is picked by are shown
+        # and the rotation is on the row's tooltip -- clipped numbers would be
+        # worse than named ones.
         self.table = QTableWidget(0, 2)
         self.table.setHorizontalHeaderLabels(["name", "x y z (mm)"])
         self.table.verticalHeader().hide()
@@ -61,9 +61,8 @@ class PointsPanel(QWidget):
         """Teaching and tidying, under the list.
 
         The sidebar is the width the jog keys need, and the program must not
-        move when the two swap places -- so this page has the same 320 px and
-        a column of buttons beside the table would leave the table 50 px. They
-        go underneath, in two rows of three.
+        move when the two swap places. The buttons go underneath, in two rows
+        of three, so the table keeps the full column width.
         """
         page = QWidget()
         v = QVBoxLayout(page)

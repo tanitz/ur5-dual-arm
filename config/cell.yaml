@@ -114,3 +114,4 @@ vision:
   plane_log: config/plane_log.json
   max_correction: 0.28
   max_correction_deg: 30.0
+ui: {sidebar_side: right, sidebar_panel: net, sidebar_open: true, fullscreen: false}

@@ -5,7 +5,7 @@ import numpy as np
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QImage, QPainter, QPen, QPixmap
 from PyQt5.QtWidgets import (
-    QComboBox, QDialog, QHBoxLayout, QLabel, QLineEdit,
+    QComboBox, QDialog, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
     QSpinBox, QVBoxLayout, QWidget,
 )
 
@@ -22,8 +22,11 @@ from .. import style as S
 from .jog import JogPanel
 
 
-VIEW_W, VIEW_H = 308, 195
+# Fill the 512 px sidebar (less its 6 px margins). Combining the two selectors
+# below returns enough vertical room to make the viewport taller as well.
+VIEW_W, VIEW_H = 500, 300
 VIEW_MODES = ("lens", "blend", "depth")
+ACTION_H, ACTION_FONT = 36, 11
 BLEND = 0.45
 NEAR, FAR = 0.30, 1.60
 
@@ -495,6 +498,7 @@ class CameraPanel(QWidget):
         super().__init__()
         self.app = app
         self.mode = "lens"
+        self._shown_pass = -1
         self._said = None
         self._saved_size = None      # what is on disk, so a pass of focus
                                      # through the fields does not rewrite it
@@ -545,7 +549,6 @@ class CameraPanel(QWidget):
         self.source_combo.setMinimumHeight(S.sx(34))
         self.source_combo.setStyleSheet(S.combo())
         self.source_combo.currentIndexChanged.connect(self._source_changed)
-        layout.addLayout(self._row("source", self.source_combo))
 
         # The opening's own size, which is not a preference but a measurement
         # the solver is given: four corners in a picture are the same four
@@ -561,36 +564,56 @@ class CameraPanel(QWidget):
         self.size_combo.setMinimumHeight(S.sx(34))
         self.size_combo.setStyleSheet(S.combo())
         self.size_combo.activated.connect(self._size_picked)
-        layout.addLayout(self._row("box mm", self.size_combo))
 
         self.length_spin = self._size_spin()
         self.width_spin = self._size_spin()
         self.height_spin = self._size_spin(minimum=10)
-        sizes = QHBoxLayout()
-        sizes.setSpacing(S.sx(4))
-        # Aligned under the dropdown rather than given a caption of their own:
-        # the three fields are how a size that is not on the list gets onto it,
-        # and a second label saying "box mm" would read as a second setting.
-        indent = S.caption("")
-        indent.setFixedWidth(S.sx(52))
-        sizes.addWidget(indent)
-        sizes.addWidget(self.length_spin, 1)
-        sizes.addWidget(S.caption("×"), 0)
-        sizes.addWidget(self.width_spin, 1)
-        sizes.addWidget(S.caption("×"), 0)
-        sizes.addWidget(self.height_spin, 1)
-        layout.addLayout(sizes)
 
-        dimensions = QHBoxLayout()
-        dimension_indent = S.caption("")
-        dimension_indent.setFixedWidth(S.sx(52))
-        dimensions.addWidget(dimension_indent)
-        dimensions.addWidget(S.caption("length"), 1)
-        dimensions.addWidget(S.caption(""), 0)
-        dimensions.addWidget(S.caption("width"), 1)
-        dimensions.addWidget(S.caption(""), 0)
-        dimensions.addWidget(S.caption("height"), 1)
-        layout.addLayout(dimensions)
+        # One grid for all three rows, rather than three rows of hand-tuned
+        # indents. The three fields are how a size that is not on the list
+        # gets onto it, so they belong *under the list* — and an indent picked
+        # to look right at one scale is an indent that is wrong at every
+        # other, which is what left them sitting a few pixels off the dropdown
+        # they are the manual version of. Sharing a grid, they cannot drift:
+        # the column is the column.
+        #
+        # They also get no caption of their own. A second label saying "box
+        # mm" beside them would read as a second setting.
+        selectors = QGridLayout()
+        selectors.setContentsMargins(0, 0, 0, 0)
+        selectors.setHorizontalSpacing(S.sx(4))
+        selectors.setVerticalSpacing(S.sx(3))
+        selectors.addWidget(S.caption("source"), 0, 0)
+        selectors.addWidget(self.source_combo, 0, 1)
+        selectors.addWidget(S.caption("box mm"), 0, 2)
+        selectors.addWidget(self.size_combo, 0, 3)
+        # the two captions size to their text; the two fields share the row,
+        # in the 1:2 the dropdown has always had over the source picker
+        selectors.setColumnStretch(1, 1)
+        selectors.setColumnStretch(3, 2)
+
+        # The spins and their captions, in their own grid so that each caption
+        # is centred under its own field, dropped whole into the cell the
+        # dropdown occupies.
+        typed = QGridLayout()
+        typed.setContentsMargins(0, 0, 0, 0)
+        typed.setHorizontalSpacing(S.sx(4))
+        typed.setVerticalSpacing(0)
+        for column, (spin, name) in enumerate((
+                (self.length_spin, "length"), (self.width_spin, "width"),
+                (self.height_spin, "height"))):
+            at = column * 2
+            if column:
+                typed.addWidget(S.caption("×"), 0, at - 1)
+            typed.addWidget(spin, 0, at)
+            caption = S.caption(name)
+            caption.setAlignment(Qt.AlignHCenter)
+            typed.addWidget(caption, 1, at)
+            typed.setColumnStretch(at, 1)
+        holder = QWidget()
+        holder.setLayout(typed)
+        selectors.addWidget(holder, 1, 3)
+        layout.addLayout(selectors)
 
         self.setup_lbl = QLabel()
         self.setup_lbl.setWordWrap(True)
@@ -599,10 +622,9 @@ class CameraPanel(QWidget):
         layout.addWidget(self._pin(self.setup_lbl, 1))
 
         self.live_btn = S.touch_button(
-            "▶ Live", S.GREEN, height=40, font_px=13, checkable=True)
+            "▶ Live", S.GREEN, height=ACTION_H, font_px=ACTION_FONT,
+            checkable=True)
         self.live_btn.clicked.connect(self._toggle_live)
-        layout.addWidget(self.live_btn)
-        self._show_live()
 
         self.note = QLabel("")
         self.note.setWordWrap(True)
@@ -610,25 +632,29 @@ class CameraPanel(QWidget):
             f"font-size:{S.fpx(11)}px;color:{S.AMBER};")
         layout.addWidget(self.note)
 
-        workflows = QHBoxLayout()
-        workflows.setSpacing(S.sx(4))
+        actions = QHBoxLayout()
+        actions.setSpacing(S.sx(4))
+        actions.addWidget(self.live_btn, 1)
         self.surface_btn = S.touch_button(
-            "Measure Surface + Box", S.PURPLE, height=42, font_px=13)
+            "Measure Surface + Box", S.PURPLE, height=ACTION_H,
+            font_px=ACTION_FONT)
         self.surface_btn.setToolTip(
             "capture the box, then the ChArUco board where it stood; save "
             "vision.surface and the measured box size")
         self.surface_btn.clicked.connect(self._open_surface_measurement)
-        workflows.addWidget(self.surface_btn, 1)
+        actions.addWidget(self.surface_btn, 1)
         self.surface_dialog = SurfaceBoxCalibrationDialog(self)
 
         self.home_box_btn = S.touch_button(
-            "Create Home Box", S.BLUE, height=42, font_px=13)
+            "Create Home Box", S.BLUE, height=ACTION_H,
+            font_px=ACTION_FONT)
         self.home_box_btn.setToolTip(
             "open the camera and X/Y/Z jog controls, then store the box "
             "reference together with the gripper's pre-pick pose")
         self.home_box_btn.clicked.connect(self._open_home_box)
-        workflows.addWidget(self.home_box_btn, 1)
-        layout.addLayout(workflows)
+        actions.addWidget(self.home_box_btn, 1)
+        layout.addLayout(actions)
+        self._show_live()
         self.home_box_lbl = QLabel("")
         self.home_box_lbl.setWordWrap(True)
         self.home_box_lbl.setStyleSheet(
@@ -654,11 +680,11 @@ class CameraPanel(QWidget):
             text = ("Surface measured: %.0f mm from lens, tilt %.1f deg" %
                     (surface.distance * 1000, np.degrees(surface.tilt)))
             self.surface_btn.setText("✓ Surface + Box")
-            self.surface_btn.setStyleSheet(S.solid(S.GREEN, 13))
+            self.surface_btn.setStyleSheet(S.solid(S.GREEN, ACTION_FONT))
         else:
             text = "Surface has not been measured"
             self.surface_btn.setText("Measure Surface + Box")
-            self.surface_btn.setStyleSheet(S.solid(S.PURPLE, 13))
+            self.surface_btn.setStyleSheet(S.solid(S.PURPLE, ACTION_FONT))
         self.surface_btn.setToolTip(text)
 
     # -- home box --------------------------------------------------------
@@ -721,7 +747,10 @@ class CameraPanel(QWidget):
         spin = QSpinBox()
         spin.setRange(minimum, SIZE_MAX)
         spin.setSingleStep(SIZE_STEP)
-        spin.setSuffix(" mm")
+        # No " mm" on the number. Three of these share the width of one
+        # dropdown, and a right-aligned suffix is the first thing the spin
+        # arrows eat into — a field reading "200 m" is worse than no unit at
+        # all. The unit is said once, on the "box mm" label above the column.
         spin.setMinimumHeight(S.sx(34))
         spin.setStyleSheet(S.field())
         spin.setAlignment(Qt.AlignRight)
@@ -873,15 +902,6 @@ class CameraPanel(QWidget):
             detector.auto_size = enabled
             detector.reset()
 
-    def _row(self, label, widget):
-        row = QHBoxLayout()
-        row.setSpacing(S.sx(4))
-        caption = S.caption(label)
-        caption.setFixedWidth(S.sx(52))
-        row.addWidget(caption)
-        row.addWidget(widget, 1)
-        return row
-
     def _load_size(self):
         """Put the configured opening into the two fields, quietly."""
         size = self.app.cell.config.vision.get("box_size") or (0.60, 0.40, 0.20)
@@ -925,6 +945,7 @@ class CameraPanel(QWidget):
         reading = self.app.vision.latest
         if reading.frame is not None:
             self.view.setPixmap(self._picture(reading))
+            self._shown_pass = reading.pass_no
 
     def _source_changed(self):
         vision = self.app.cell.config.vision
@@ -954,7 +975,7 @@ class CameraPanel(QWidget):
         self.live_btn.setChecked(running)
         self.live_btn.setText("■ Stop" if running else "▶ Live")
         self.live_btn.setStyleSheet(
-            S.solid(S.RED if running else S.GREEN, 13))
+            S.solid(S.RED if running else S.GREEN, ACTION_FONT))
 
     def _show(self, reading):
         if reading.frame is None:
@@ -1123,14 +1144,33 @@ class CameraPanel(QWidget):
                       depth[known].astype(np.float32) * BLEND)
         return out.astype(np.uint8)
 
+    def web_jpeg(self, frame, quality=74):
+        """Encode an unblocked preview frame without waiting for detection."""
+        if frame is None:
+            return None
+        rgb = self._composite(frame)
+        if rgb is None:
+            return None
+        ok, encoded = cv2.imencode(
+            ".jpg", np.ascontiguousarray(rgb[:, :, ::-1]),
+            [cv2.IMWRITE_JPEG_QUALITY, int(quality)])
+        return encoded.tobytes() if ok else None
+
     def _scaled(self, rgb, view=None):
         view = view or self.view
         rgb = np.ascontiguousarray(rgb)
         height, width = rgb.shape[:2]
         image = QImage(rgb.data, width, height, 3 * width,
                        QImage.Format_RGB888)
+        # The main tab uses every pixel in its wide viewport. Cropping a small
+        # amount from the top and bottom makes the live image substantially
+        # larger than preserving the whole frame between black side bars.
+        # Dialog views keep the complete frame because calibration needs every
+        # visible corner.
+        aspect_mode = (Qt.KeepAspectRatioByExpanding
+                       if view is self.view else Qt.KeepAspectRatio)
         return QPixmap.fromImage(image.copy()).scaled(
-            view.width(), view.height(), Qt.KeepAspectRatio,
+            view.width(), view.height(), aspect_mode,
             Qt.SmoothTransformation)
 
     @staticmethod
@@ -1163,6 +1203,9 @@ class CameraPanel(QWidget):
         if not self.app.vision.running:
             return
         reading = self.app.vision.latest
+        if reading.pass_no == self._shown_pass:
+            return
+        self._shown_pass = reading.pass_no
         self._show(reading)
         self.surface_dialog.show_reading(reading)
         self.home_box_dialog.show_reading(reading)

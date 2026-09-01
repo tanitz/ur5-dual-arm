@@ -51,6 +51,9 @@ cfg = CellConfig.load()
 cfg.arms["B"].enabled = True
 cfg.calibrated = False
 cfg.translation_calibrated = True
+# The width checks explicitly close Jog below, so start on that remembered
+# panel rather than inheriting whichever tab the real operator used last.
+cfg.ui.update({"sidebar_panel": "jog", "sidebar_open": True})
 window = MainWindow(cell=Cell(cfg, simulated=True), connect_on_start=False)
 window.resize(1280, 800)
 window.show()
@@ -455,11 +458,11 @@ check("a Run is always a real one now",
           "program.py")).read())
 
 print("\nthe rail carries only the panels that are used")
-check("Vars and Object are gone",
-      sorted(window.rail.buttons) == ["camera", "jog", "points"],
+check("Vars and Object are gone, and the machines tab is there",
+      sorted(window.rail.buttons) == ["camera", "jog", "net", "points"],
       str(sorted(window.rail.buttons)))
 check("and nothing else tried to build them",
-      sorted(window.panels) == ["camera", "jog", "points", "program"],
+      sorted(window.panels) == ["camera", "jog", "net", "points", "program"],
       str(sorted(window.panels)))
 
 print("\n▷ To runs the selected line by itself")

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Dual UR5 desktop plus synchronized browser UI for a trusted LAN.
+
+unset SESSION_MANAGER
+
+cd "$(dirname "$(readlink -f "$0")")/.." && exec python3 -m ur5dual.gui.app \
+  --web --web-host 0.0.0.0 "$@"

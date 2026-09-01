@@ -27,6 +27,7 @@ import time
 import numpy as np
 
 from ..axes import shown_xyz
+from ..comms import LinkError
 from ..coupling import (
     Coordinator, CouplingError, DRIFT_HARD_MULTIPLE, FIGHT_FORCE, HeldObject,
     limit_uncalibrated_rotation,
@@ -74,6 +75,21 @@ def _off_home_rfh(was, now, yaw, tilt):
                np.degrees(yaw), np.degrees(tilt)))
 
 
+def _as_number(value):
+    """What a reply is worth to a variable an IF can test.
+
+    A machine answering `12.5` means twelve and a half; one answering `OK`
+    means it answered, and 1 is the only honest number for that — variables
+    hold numbers here, and inventing a string namespace so that `IF reply ==
+    "OK"` could exist would be a second vocabulary for the one case where the
+    match on the RECV line has already asked the question.
+    """
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 1.0
+
+
 class ProgramError(RuntimeError):
     pass
 
@@ -88,6 +104,12 @@ class Executor:
         # The camera, if the cell has one. A program without a FIND never
         # touches it, and a cell without one still runs every other step.
         self.vision = vision
+        # The machines the cell stands next to, if it has any. Owned by
+        # whoever owns the camera and for the same reason: a program that
+        # hands a machine its start signal must not depend on which panel an
+        # operator happened to leave open. A program with no SEND or RECV in
+        # it never touches this, and a cell with no links still runs.
+        self.links = None
         # The surface the box slides on, if it has been measured: the map from
         # pixels onto it and the places picks were taught against. Set by
         # whoever owns the camera, for the same reason and at the same time.
@@ -351,6 +373,10 @@ class Executor:
             self._set_var(step)
         elif kind == "FIND":
             self._find(step)
+        elif kind == "SEND":
+            self._send(step)
+        elif kind == "RECV":
+            self._recv(step)
         elif kind == "JUMP":
             return self._label_index(step.get("target"), labels)
         elif kind == "IF":
@@ -711,6 +737,72 @@ class Executor:
                            "+=": current + value,
                            "-=": current - value}[op]
         self.log("     %s = %g" % (name, self.vars[name]))
+
+    # -- the machines beside the cell --------------------------------------
+    def _link_service(self):
+        if self.links is None:
+            raise ProgramError(
+                "this cell has no machines set up — add one on the "
+                "Communication tab before a program can talk to it")
+        return self.links
+
+    def _send(self, step):
+        """Put one named datum on the wire, and carry on.
+
+        Fire and forget on purpose. A machine that answers is a RECV on the
+        next line, which is a line the operator can see and time out; folding
+        the reply into the send would hide a wait inside a step that reads
+        like it does not have one.
+        """
+        name = (step.get("link") or "").strip()
+        item = (step.get("item") or "").strip() or None
+        if self.simulate:
+            self.log("     (simulated) %s" % step.describe())
+            return
+        try:
+            self._link_service().send(name, item, text=step.get("text"))
+        except LinkError as exc:
+            raise ProgramError(str(exc))
+
+    def _recv(self, step):
+        """Hold here until the machine says what the step is waiting for.
+
+        The same bargain WAIT_IN makes with a digital input, and for the same
+        reason: a timeout of zero waits as long as it takes, which is what a
+        cell fed by a slow machine wants, and any other timeout fails the
+        program rather than carrying on as though the signal had arrived.
+        Carrying on is how an arm reaches into a fixture that is not ready.
+        """
+        name = (step.get("link") or "").strip()
+        item = (step.get("item") or "").strip() or None
+        into = (step.get("into") or "").strip()
+        timeout = float(step.get("timeout", 0) or 0)
+        if self.simulate:
+            if into:
+                self.vars[into] = 1.0
+            self.log("     (simulated) %s" % step.describe())
+            return
+
+        links = self._link_service()
+        deadline = time.monotonic() + timeout if timeout > 0 else None
+        while True:
+            held = self._hold_if_paused()
+            if deadline is not None:
+                deadline += held
+            try:
+                got, value = links.attempt(name, item)
+            except LinkError as exc:
+                raise ProgramError(str(exc))
+            if got:
+                if into:
+                    self.vars[into] = _as_number(value)
+                    self.log("     %s = %g" % (into, self.vars[into]))
+                return
+            if deadline is not None and time.monotonic() > deadline:
+                raise ProgramError(
+                    "%s never sent %s (waited %.1f s)"
+                    % (name, item or "anything", timeout))
+            time.sleep(POLL_PERIOD)
 
     # -- the camera --------------------------------------------------------
     def _camera_to_world(self):

@@ -27,6 +27,9 @@ AMBER = "#cc7700"
 PURPLE = "#5a3a8a"
 BLUE = "#2a5a8a"
 INK = "#0a58a8"
+# Neither good nor bad: a simulated cell is not a healthy real one and is not
+# a fault either, and painting it green or red would claim one of those.
+SLATE = "#54636a"
 
 
 def set_scale(f):
