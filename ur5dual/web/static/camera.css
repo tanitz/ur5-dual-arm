@@ -1,0 +1,30 @@
+#camera .box-fields {
+  grid-column: 1 / 5;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+#camera .box-fields label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+#camera .box-fields input {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  height: 38px;
+  padding: 5px 6px;
+  text-align: right;
+}
+
+#camera .size-times {
+  flex: 0 0 auto;
+  height: 38px;
+}

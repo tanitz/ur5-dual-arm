@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Desktop launcher: the panel on the two live arms. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"
+     viewBox="0 0 128 128">
+  <rect x="3" y="3" width="122" height="122" rx="20" fill="#f2f4f5"
+        stroke="#c7ced2" stroke-width="2"/>
+
+  <!-- The cell itself: one mast, one crossbar, two arms holding a box. The
+       drawing is identical on both icons, because it is the same cell — only
+       the band below says which of the two a double-click will drive. -->
+  <rect x="60" y="22" width="8" height="58" rx="3" fill="#54636a"/>
+  <rect x="28" y="19" width="72" height="9" rx="4" fill="#54636a"/>
+  <path d="M33 30 L24 48 L46 60 L52 74" fill="none" stroke="#2a5a8a"
+        stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M95 30 L104 48 L82 60 L76 74" fill="none" stroke="#2a5a8a"
+        stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="49" y="66" width="30" height="16" rx="2" fill="#cc7700"/>
+
+  <!-- The panel's own colours, so the icon and the indicator agree:
+       red is the word this panel says about itself -->
+  <path d="M3 86 H125 V105 a20 20 0 0 1 -20 20 H23 a20 20 0 0 1 -20 -20 Z"
+        fill="#aa2222"/>
+  <text x="64" y="114" text-anchor="middle" font-size="24" font-weight="bold"
+        font-family="DejaVu Sans, Verdana, sans-serif" fill="#ffffff"
+        letter-spacing="1">REAL</text>
+</svg>

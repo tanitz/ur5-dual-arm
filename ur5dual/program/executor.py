@@ -1126,7 +1126,12 @@ class Executor:
         self.object.capture(self.cell, arm_ids, step.get("origin", "midpoint"))
         self.log("     grip span %.1f mm" % ((self.object.span() or 0) * 1000))
 
-        self.coordinator = Coordinator(self.cell, simulate=self.simulate)
+        # A simulated cell has no controller to open a servo backend to, so
+        # the loop closes through its own arms instead — the same substitution
+        # the panel's own Take hold makes. Without it an ATTACH in a `--sim`
+        # run would sit waiting on two IP addresses that answer nothing.
+        self.coordinator = Coordinator(self.cell, simulate=self.simulate,
+                                       drive_robots=not self.cell.simulated)
         self.coordinator.start(self.object)
 
     def _detach(self):

@@ -46,12 +46,20 @@ assert index.status_code == 200 and "Dual UR5 control" in index.text
 assert index.headers["cache-control"] == "no-store, max-age=0"
 assert 'data-tab="comm"' in index.text and 'class="workspace"' in index.text
 assert 'id="swapSide"' in index.text
-assert "app.js?v=20260828-status-fast" in index.text
+assert "app.js?v=20260901-camera-fields-row" in index.text
+assert "camera.css?v=20260901-fields-row" in index.text
+assert 'class="box-fields"' in index.text
 
 # The two-column shape, and the side and tab each browser remembers for
 # itself, live in the static files — checked here rather than in a browser.
 sheet = client.get("/assets/app.css")
 assert sheet.status_code == 200 and ".side-left .workspace" in sheet.text
+assert "grid-template-columns:max-content minmax(70px,1fr)" in sheet.text
+assert ".box-fields{grid-column:4" in sheet.text
+camera_sheet = client.get("/assets/camera.css")
+assert camera_sheet.status_code == 200
+assert "grid-column: 1 / 5" in camera_sheet.text
+assert "display: flex" in camera_sheet.text
 script = client.get("/assets/app.js").text
 assert "localStorage.ur5dualWebSide" in script
 assert "localStorage.ur5dualWebTab" in script

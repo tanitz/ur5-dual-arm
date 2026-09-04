@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# The whole panel, with simulated arms in place of the two controllers.
+#
+# Same window, same programs, same points, same jog and the same coordinated
+# servo loop as ur5dual-gui: only the last step, the write to a controller, is
+# replaced. Nothing here can move a robot, so it runs with the cell powered
+# down, unplugged, or on a laptop that has never seen one.
+#
+# The camera is a separate thing and is left alone — a Jetson with the
+# RealSense attached still sees through it. On a machine with no lens the
+# Camera tab's `source` picker switches to the simulated one.
+#
+# Add --web for a browser on this machine; ur5dual-sim-web serves the LAN.
+
+unset SESSION_MANAGER
+
+cd "$(dirname "$(readlink -f "$0")")/.." && exec python3 -m ur5dual.gui.app \
+  --sim "$@"

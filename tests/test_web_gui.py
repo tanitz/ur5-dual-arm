@@ -97,6 +97,12 @@ assert get_state()["ready"] is True
 post({"action": "camera_mode", "mode": "depth"})
 assert window.panels["camera"].mode == "depth"
 assert get_state()["camera"]["mode"] == "depth"
+post({"action": "camera_auto_size", "enabled": True})
+assert window.cell.config.vision["auto_size"] is True
+assert get_state()["camera"]["auto_size"] is True
+post({"action": "camera_box", "box_mm": [200, 100, 70]})
+assert window.cell.config.vision["auto_size"] is False
+assert get_state()["camera"]["box_mm"] == [200, 100, 70]
 
 post({"action": "program_set", "program": {
     "name": "from_web", "loop": False, "steps": [],

@@ -153,8 +153,11 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Dual UR5 control")
 
-        # This installation is a REAL-only control panel.  Supplying a cell is
-        # kept as a test seam; normal startup builds the two live arms here.
+        # This installation is a REAL control panel: startup builds the two
+        # live arms here. A cell handed in from outside is the one seam past
+        # that — the tests use it, and so does `--sim`, which hands in the
+        # simulated stand-ins. They answer every question below the way a
+        # controller does and send nothing to one.
         self.cell = cell or Cell(CellConfig.load(config_path), simulated=False)
         self.cell.listeners.append(self.log)
         self.points = PointLibrary()
@@ -182,7 +185,10 @@ class MainWindow(QMainWindow):
         self.surface = None
         self.reload_surface()
         self.coordinator_start_error = None
-        self.mode = "real"
+        # What `start_coordinator` reads before it opens servo backends. A
+        # simulated cell closes the loop through its own arms instead of
+        # through two controllers, which is the whole of the substitution.
+        self.mode = "sim" if self.cell.simulated else "real"
         self.grip_output = 0
         self.object_count = 0
         self.programs_dir = PROGRAMS_DIR
@@ -976,6 +982,11 @@ class MainWindow(QMainWindow):
             if source not in ("sim", "realsense"):
                 raise ValueError("unknown camera source")
             camera.source_combo.setCurrentText(source)
+        elif action == "camera_auto_size":
+            camera._apply_auto_size(bool(command.get("enabled")))
+            camera._fill_sizes()
+            camera._write_setup()
+            camera.app.cell.config.save_vision()
         elif action == "camera_box":
             values = command.get("box_mm")
             if not isinstance(values, list) or len(values) != 3:
@@ -1124,6 +1135,11 @@ class MainWindow(QMainWindow):
                 sizes.append(list(value))
         return {
             "arms": arms,
+            # The browser has no red band of its own to read, and a tablet
+            # across the room is exactly where mistaking a simulated cell for
+            # two live arms costs the most. So the panel's own word travels
+            # with the state rather than being inferred from anything.
+            "simulated": bool(self.cell.simulated),
             "last_message": self.last_message.text(),
             "program": {
                 "name": program_panel.program.name,
@@ -1142,6 +1158,8 @@ class MainWindow(QMainWindow):
                 "running": bool(self.vision.running), "mode": camera.mode,
                 "reading": camera.found_lbl.text(),
                 "source": camera.source_combo.currentText(), "sizes": sizes,
+                "auto_size": bool(self.cell.config.vision.get(
+                    "auto_size", False)),
                 "box_mm": [camera.length_spin.value(),
                            camera.width_spin.value(), camera.height_spin.value()],
             },
@@ -1200,6 +1218,12 @@ def main():
     parser.add_argument("--windowed", action="store_true",
                         help="run inside the desktop's window frame for this "
                              "run, maximised to the work area")
+    parser.add_argument("--sim", action="store_true",
+                        help="simulated arms: the panel, the programs, the "
+                             "jog and the servo loop all run and nothing is "
+                             "sent to a controller. The camera still follows "
+                             "vision.source; the Camera tab switches it to "
+                             "'sim' on a machine with no lens")
     parser.add_argument("--web", action="store_true",
                         help="serve the synchronized browser UI")
     parser.add_argument("--web-host", default="127.0.0.1",
@@ -1242,7 +1266,13 @@ def main():
     else:
         S.fit_to(area.width(), height)
 
-    window = MainWindow(args.config,
+    # Simulated arms are built here rather than inside the window, so the one
+    # place that decides whether this run can move a robot is the command line
+    # that started it. Everything below the window keeps asking `cell.arms[id]`
+    # the same questions either way.
+    cell = (Cell(CellConfig.load(args.config), simulated=True)
+            if args.sim else None)
+    window = MainWindow(args.config, cell=cell,
                         web_host=args.web_host if args.web else None,
                         web_port=args.web_port,
                         web_token=args.web_token)

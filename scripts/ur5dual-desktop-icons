@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Put two launchers on this user's desktop and in the applications menu: the
+# panel on the live arms, and the same panel simulated.
+#
+# The pair is generated here rather than committed as two ready-made .desktop
+# files because `Exec=` and `Icon=` have to be absolute paths, and a checkout
+# does not know where it is until something asks. Run it again after moving
+# or copying the repository.
+#
+#   scripts/ur5dual-desktop-icons             install, or refresh after a move
+#   scripts/ur5dual-desktop-icons --remove    take both away again
+
+set -eu
+
+repo="$(readlink -f "$(dirname "$(readlink -f "$0")")/..")"
+apps="$HOME/.local/share/applications"
+desk="$(xdg-user-dir DESKTOP 2>/dev/null || true)"
+desk="${desk:-$HOME/Desktop}"
+
+remove_one() {
+    rm -f "$apps/$1.desktop" "$desk/$1.desktop"
+}
+
+install_one() {
+    local id="$1" name="$2" launcher="$3" comment="$4"
+    local file="$apps/$id.desktop"
+    mkdir -p "$apps"
+    cat > "$file" <<EOF
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=$name
+Comment=$comment
+Exec="$repo/scripts/$launcher"
+Path=$repo
+Icon=$repo/scripts/icons/$id.svg
+Terminal=false
+Categories=Utility;Engineering;
+Keywords=UR5;robot;cell;dual;
+StartupNotify=true
+EOF
+    chmod 755 "$file"
+    # A GNOME desktop runs a launcher sitting on it only when the file is
+    # executable *and* has been marked trusted. Miss either and a double-click
+    # opens the icon in a text editor, which looks like the panel is broken.
+    if [ -d "$desk" ]; then
+        install -m 755 "$file" "$desk/$id.desktop"
+        gio set "$desk/$id.desktop" metadata::trusted true 2>/dev/null || true
+    fi
+    echo "  $desk/$id.desktop"
+}
+
+if [ "${1:-}" = "--remove" ]; then
+    remove_one ur5dual-real
+    remove_one ur5dual-sim
+    echo "removed both launchers"
+else
+    echo "installed:"
+    install_one ur5dual-real "Dual UR5 REAL" ur5dual-gui \
+        "The control panel on the two live arms"
+    install_one ur5dual-sim "Dual UR5 SIM" ur5dual-sim \
+        "The same panel with simulated arms — nothing reaches a controller"
+fi
+
+update-desktop-database "$apps" 2>/dev/null || true

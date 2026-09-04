@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
   <title>Dual UR5 control</title>
   <link rel="stylesheet" href="/assets/app.css">
+  <link rel="stylesheet" href="/assets/camera.css?v=20260901-fields-row">
 </head>
 <body>
   <header class="safety">
-    <div><strong>Dual UR5 control</strong><span id="linkState" class="pill warn">connecting</span></div>
+    <div><strong>Dual UR5 control</strong><span id="cellMode" class="pill real">REAL</span><span id="linkState" class="pill warn">connecting</span></div>
     <div id="armState" class="arm-state"></div>
     <button id="globalStop" class="danger stop">■ STOP</button>
   </header>
@@ -56,11 +57,17 @@
       <div id="cameraModes" class="segmented"><button data-mode="lens">lens</button><button data-mode="blend">blend</button><button data-mode="depth">depth</button></div>
       <pre id="cameraReading">—</pre>
       <div class="camera-controls">
-        <label>source <select id="cameraSource"><option>sim</option><option>realsense</option></select></label>
-        <label>box mm <select id="boxSize"></select></label>
-        <label>L <input id="boxL" type="number" min="50" max="2000" step="10"></label>
-        <label>W <input id="boxW" type="number" min="50" max="2000" step="10"></label>
-        <label>H <input id="boxH" type="number" min="10" max="2000" step="10"></label>
+        <label for="cameraSource">source</label>
+        <select id="cameraSource"><option>sim</option><option>realsense</option></select>
+        <label for="boxSize">box mm</label>
+        <select id="boxSize"></select>
+        <div class="box-fields">
+          <label><input id="boxL" type="number" min="50" max="2000" step="10"><span>length</span></label>
+          <span class="size-times" aria-hidden="true">×</span>
+          <label><input id="boxW" type="number" min="50" max="2000" step="10"><span>width</span></label>
+          <span class="size-times" aria-hidden="true">×</span>
+          <label><input id="boxH" type="number" min="10" max="2000" step="10"><span>height</span></label>
+        </div>
       </div>
       <div class="toolbar"><button id="cameraLive" class="success">▶ Live</button></div>
     </section>
@@ -101,6 +108,6 @@
   </main>
 
   <footer><span id="lastMessage">Ready</span></footer>
-  <script src="/assets/app.js?v=20260828-status-fast"></script>
+  <script src="/assets/app.js?v=20260901-camera-fields-row"></script>
 </body>
 </html>

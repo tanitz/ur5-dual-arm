@@ -28,6 +28,12 @@
     if (Number.isFinite(s?.revision)) renderedRevision = s.revision;
     state = s;
     $('#linkState').textContent = 'live'; $('#linkState').classList.remove('warn');
+    // Which cell this browser is driving, said in a word rather than left to
+    // be guessed from two dots that a simulated arm lights up as well.
+    const mode = $('#cellMode');
+    mode.textContent = s.simulated ? 'SIM' : 'REAL';
+    mode.classList.toggle('sim', !!s.simulated);
+    mode.classList.toggle('real', !s.simulated);
     const arms = s.arms || {};
     text('#armState', ['A','B'].map(a => `${a} ${arms[a]?.connected ? '●' : '○'} ${arms[a]?.pose_text || '—'}`).join('\n'));
     text('#lastMessage', s.last_message || 'Ready');
@@ -56,8 +62,10 @@
 
     const c=s.camera||{}; active('#cameraModes button', c.mode, 'mode'); text('#cameraReading', c.reading || '—');
     option($('#cameraSource'), c.source); $('#cameraLive').textContent=c.running?'■ Stop':'▶ Live'; $('#cameraLive').className=c.running?'danger':'success';cameraStream();
-    const box=$('#boxSize'), boxOld=box.value; box.innerHTML=(c.sizes||[]).map(v=>`<option value="${v.join(',')}">${v.join(' × ')} mm</option>`).join(''); box.value=(c.box_mm||[]).join(',')||boxOld;
-    ['L','W','H'].forEach((x,i)=>{if(document.activeElement!==$(`#box${x}`)) $(`#box${x}`).value=(c.box_mm||[])[i]||''});
+    const box=$('#boxSize'), boxOld=box.value;
+    box.innerHTML=`<option value="auto">Auto (depth)</option>`+(c.sizes||[]).map(v=>`<option value="${v.join(',')}">${v.join(' × ')} mm</option>`).join('');
+    box.value=c.auto_size?'auto':((c.box_mm||[]).join(',')||boxOld);
+    ['L','W','H'].forEach((x,i)=>{const field=$(`#box${x}`);field.disabled=!!c.auto_size;if(document.activeElement!==field)field.value=(c.box_mm||[])[i]||''});
 
     const j=s.jog||{}; active('#jogTargets button',j.target,'target'); active('#jogPresets button',j.preset,'preset'); option($('#jogMotion'),j.hold_mode?'hold':'step'); option($('#jogFrame'),j.frame); text('#jogSize',j.size||''); text('#jogNote',j.note||'');
     const labels=j.frame==='joint'?['J1','J2','J3','J4','J5','J6']:['X','Y','Z','RX','RY','RZ'];
@@ -89,7 +97,7 @@
   $('#dataEdit').onclick=()=>{try{const links=linksCopy(),link=links.find(x=>x.name===selectedLink),i=(link?.data||[]).findIndex(x=>x.name===selectedItem);if(i<0)return;const item=askItem(link,link.data[i]);if(item){link.data[i]=item;selectedItem=item.name;applyLinks(links)}}catch(e){text('#lastMessage',e.message)}};
   $('#dataDelete').onclick=()=>{const links=linksCopy(),link=links.find(x=>x.name===selectedLink);if(link&&selectedItem&&confirm(`Delete ${selectedItem}?`)){link.data=(link.data||[]).filter(x=>x.name!==selectedItem);applyLinks(links)}};
   $('#commTest').onclick=()=>{if(selectedLink)command('comm_test',{name:selectedLink})};$('#commSave').onclick=()=>command('comm_save');$('#commJson').oninput=()=>{commDirty=true};$('#applyComm').onclick=()=>{try{const links=JSON.parse($('#commJson').value);command('comm_set',{links}).then(()=>{commDirty=false})}catch(e){text('#lastMessage','invalid Communication JSON')}};
-  $('#cameraModes').onclick=e=>{const b=e.target.closest('[data-mode]');if(b)command('camera_mode',{mode:b.dataset.mode})}; $('#cameraLive').onclick=()=>command('camera_live',{running:!state?.camera?.running}); $('#cameraSource').onchange=e=>command('camera_source',{source:e.target.value}); $('#boxSize').onchange=e=>command('camera_box',{box_mm:e.target.value.split(',').map(Number)}); ['L','W','H'].forEach(x=>{$(`#box${x}`).onchange=()=>command('camera_box',{box_mm:['L','W','H'].map(y=>Number($(`#box${y}`).value))})});
+  $('#cameraModes').onclick=e=>{const b=e.target.closest('[data-mode]');if(b)command('camera_mode',{mode:b.dataset.mode})}; $('#cameraLive').onclick=()=>command('camera_live',{running:!state?.camera?.running}); $('#cameraSource').onchange=e=>command('camera_source',{source:e.target.value}); $('#boxSize').onchange=e=>e.target.value==='auto'?command('camera_auto_size',{enabled:true}):command('camera_box',{box_mm:e.target.value.split(',').map(Number)}); ['L','W','H'].forEach(x=>{$(`#box${x}`).onchange=()=>command('camera_box',{box_mm:['L','W','H'].map(y=>Number($(`#box${y}`).value))})});
   $('#jogTargets').onclick=e=>{const b=e.target.closest('[data-target]');if(b)command('jog_config',{target:b.dataset.target})}; $('#jogPresets').onclick=e=>{const b=e.target.closest('[data-preset]');if(b)command('jog_config',{preset:Number(b.dataset.preset)})}; $('#jogMotion').onchange=e=>command('jog_config',{hold_mode:e.target.value==='hold'}); $('#jogFrame').onchange=e=>command('jog_config',{frame:e.target.value});
   function sendJog(action,data={}){if(!ws||ws.readyState!==WebSocket.OPEN)throw new Error('realtime jog connection is not ready');ws.send(JSON.stringify({action,client_id:clientId,...data}))}
   function pressJog(button){if(held)return;held={session_id:uuid(),row:Number(button.dataset.row),sign:Number(button.dataset.sign),target:state?.jog?.target};try{sendJog('jog_press',held);heartbeat=setInterval(()=>{try{sendJog('jog_heartbeat',{session_id:held?.session_id})}catch(e){dropJog();text('#lastMessage',e.message)}},100)}catch(e){dropJog();text('#lastMessage',e.message)}}

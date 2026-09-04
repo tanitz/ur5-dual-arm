@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Simulated cell plus the browser UI on a LAN address: something to teach
+# against, demonstrate and test from a tablet with no robot involved.
+#
+# Desktop and browser stay one cell, as in ur5dual-web, and the browser's
+# header says SIM rather than REAL so nobody holding the tablet has to work
+# out which cell answered. Access token rules are ur5dual-web's: a fresh one
+# every run unless --web-token gives a fixed string or `none`.
+
+unset SESSION_MANAGER
+
+cd "$(dirname "$(readlink -f "$0")")/.." && exec python3 -m ur5dual.gui.app \
+  --sim --web --web-host 0.0.0.0 "$@"

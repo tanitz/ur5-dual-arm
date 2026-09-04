@@ -167,6 +167,7 @@ For another computer or tablet on a trusted robot-cell LAN:
 
 ```sh
 scripts/ur5dual-web
+scripts/ur5dual-sim-web   # the same, with simulated arms
 ```
 
 The terminal prints a URL containing this run's address and a new random
@@ -965,6 +966,8 @@ servo loop for the same two controllers.
 
 ```bash
 scripts/ur5dual-gui           # the control panel
+scripts/ur5dual-sim           # the same panel with simulated arms, no robot
+scripts/ur5dual-sim-web       # simulated cell, browser UI on the LAN
 scripts/ur5dual-rviz          # 3D view of the cell, read-only (see below)
 scripts/ur5dual-jog --arm A   # terminal jog for one arm, for ssh sessions
 scripts/ur5dual-flange-log    # record a measured flange gap against both poses
@@ -974,12 +977,40 @@ python3 tests/test_*.py       # the maths, no robot needed
 python3 tests/check_chain_online.py   # read-only: does our FK match the arms?
 ```
 
+Two desktop launchers, for the times a double-click beats a terminal:
+
+```bash
+scripts/ur5dual-desktop-icons            # install, or refresh after a move
+scripts/ur5dual-desktop-icons --remove   # take both away again
+```
+
+`Dual UR5 REAL` and `Dual UR5 SIM` arrive on the desktop and in the
+applications menu wearing the same red and slate the panel's own indicator
+uses, so which cell a press drives is answered before it is pressed rather
+than after. What they carry is absolute paths into this checkout: move it,
+and run the script again.
+
 ## REAL-only panel
 
-The control panel now starts directly in REAL, announces that state with a
-fixed red indicator, and attempts to connect both arms. There is no mode
-selector. The simulated cell remains available to the automated geometry and
-GUI tests, but it is not an operator mode in the panel.
+The control panel starts directly in REAL, says so in the word beside its
+connection dots, and attempts to connect both arms. There is no mode selector
+on the panel: nothing an operator can press mid-shift turns two live arms into
+a drawing of them, or a drawing back into two live arms.
+
+Which cell a run drives is decided once, by the command that starts it.
+`scripts/ur5dual-sim` builds the simulated arms instead, and the substitution
+is the last step only — the panel, the programs, the points, the jog, the
+closed-chain solver and the 125 Hz loop are the same code, and the joints that
+would have gone to two controllers go to the viewer's socket instead. So it is
+worth teaching against, worth demonstrating from, and worth trusting as a
+rehearsal, which a stub that only greyed the buttons out would not be. The
+indicator reads `SIM` in slate for the whole run, and `scripts/ur5dual-sim-web`
+carries that same word into every browser's header.
+
+The camera is a separate piece of hardware and `--sim` leaves it alone: a
+Jetson with the RealSense attached still sees through it while the arms are
+simulated. On a machine with no lens the Camera tab's `source` picker answers
+with the simulated one.
 
 `scripts/ur5dual-rviz` draws whichever is happening. It never waits for a
 robot — every joint starts at zero, which reads as "no reading" rather than as
