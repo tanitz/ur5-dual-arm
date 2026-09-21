@@ -1,7 +1,7 @@
 """
 Teaching the two bases' relative orientation by hand, on the real cell.
 
-SUPERSEDED by `check_hold_online.py`, which keeps the orientations these
+SUPERSEDED by `calibrate/world_base.py`, which keeps the orientations these
 controllers already report instead of throwing them away. That buys two
 things this cannot offer: the workpiece may be turned — turning it is what
 makes the measurement work there, rather than what invalidates a push — and
@@ -33,7 +33,7 @@ two base frames is one equation:
 Three pushes in genuinely different directions determine R_BA, and nothing
 about where the bases sit or how far apart they are ever enters — which is why
 this needs no jig and no touch-off fixture, and equally why it cannot license
-rotating a held object. For that, run the touch-off wizard on the Cell tab.
+rotating a held object. For that, run `calibrate/world_base.py --apply`.
 
     python3 tests/check_directions_online.py            # measure and report
     python3 tests/check_directions_online.py --apply    # and write cell.yaml
@@ -80,7 +80,7 @@ config = CellConfig.load()
 cell = Cell(config)
 cell.listeners.append(lambda text: print("       . %s" % text))
 
-print("this is the translation-only teach; check_hold_online.py measures more")
+print("this is the translation-only teach; calibrate/world_base.py measures more")
 print("connecting")
 cell.connect(ARM_IDS)
 if len(cell.connected_ids) < 2:

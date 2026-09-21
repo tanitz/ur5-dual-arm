@@ -52,7 +52,7 @@ The gap is not typed per sample, because a block has one thickness; and the
 flange poses come from each controller's own kinematic table rather than the
 published one, so arm B contributes what it actually knows about itself.
 
-Compare with `check_hold_online.py`, which is the better measurement when
+Compare with `calibrate/world_base.py`, which is the better measurement when
 there is anything to bolt or grip with: a rigidly held object pins all six
 degrees of freedom every placement instead of three, and needs no block, no
 seating, and no assumption that the faces went down flat.

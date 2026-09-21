@@ -96,7 +96,7 @@ the command-line tools rather than typed at the pendant, and taking hold is an
 ATTACH step in a program rather than a button, so neither panel earned its
 icon. Putting either back is one line in `widgets/rail.py` and one in
 `app._build`. What that costs while they are out: there is no touch-off from
-the panel — `tests/check_directions_online.py --apply` and
+the panel — `calibrate/world_base.py --apply` and
 `scripts/ur5dual-flange-fit` are how the cell is measured — and no manual
 take-hold, though the Jog page's release button still lets go of one.
 
@@ -973,6 +973,7 @@ scripts/ur5dual-jog --arm A   # terminal jog for one arm, for ssh sessions
 scripts/ur5dual-flange-log    # record a measured flange gap against both poses
 scripts/ur5dual-flange-fit    # what those gaps say about where arm B stands
 scripts/ur5dual-snap          # live camera; s saves a JPEG and its depth
+python3 calibrate/world_base.py --apply  # calibrate B relative to A from a held object
 python3 tests/test_*.py       # the maths, no robot needed
 python3 tests/check_chain_online.py   # read-only: does our FK match the arms?
 ```
